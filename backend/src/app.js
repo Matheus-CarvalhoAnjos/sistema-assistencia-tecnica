@@ -6,6 +6,13 @@ const app = express();
 // S4: não anunciar a tecnologia do servidor
 app.disable("x-powered-by");
 
+// Na Vercel a requisição chega por um proxy que grava o IP real do cliente em
+// X-Forwarded-For; confiar em um salto permite ao limitador de login identificar o IP.
+// Fora da Vercel (sem proxy) o cabeçalho continua sendo ignorado.
+if (process.env.VERCEL) {
+    app.set("trust proxy", 1);
+}
+
 // S4: cabeçalhos básicos de segurança (API JSON; sem dependência adicional)
 app.use((req, res, next) => {
     res.set({
