@@ -35,6 +35,29 @@ function configuracaoSsl() {
     return ssl;
 }
 
+/**
+ * Fuso horário da aplicação. Os dados são gravados no horário de Brasília; servidores
+ * hospedados (Vercel, TiDB Cloud) usam UTC, por isso o padrão na Vercel é -03:00.
+ * "local" (padrão fora da Vercel) mantém o comportamento original: fuso da máquina no
+ * driver e fuso padrão do servidor MySQL na sessão.
+ */
+function fusoHorario() {
+    const valor = (process.env.DB_TIMEZONE || (emServerless ? '-03:00' : 'local')).trim();
+
+    if (valor === 'local' || valor === 'Z' || /^[+-](0\d|1[0-4]):[0-5]\d$/.test(valor)) {
+        return valor;
+    }
+
+    throw new Error('DB_TIMEZONE inválido. Use "local", "Z" ou um deslocamento como "-03:00".');
+}
+
+const fuso = fusoHorario();
+
+// Fuso da SESSÃO SQL (CURRENT_TIMESTAMP, NOW()), aplicado a cada conexão nova do pool.
+// Sem isso, um servidor em UTC gravaria os valores padrão 3 horas à frente das datas
+// enviadas pelo Node. Em "local" nada é alterado.
+const fusoSessao = fuso === 'local' ? null : (fuso === 'Z' ? '+00:00' : fuso);
+
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
     port: inteiroPositivo(process.env.DB_PORT, 3306),
@@ -42,9 +65,8 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     ssl: configuracaoSsl(),
-    // Fuso usado para converter DATETIME <-> Date. Os dados são gravados no horário de
-    // Brasília; na Vercel o fuso do servidor é UTC, por isso o padrão lá é -03:00.
-    timezone: process.env.DB_TIMEZONE || (emServerless ? '-03:00' : 'local'),
+    // Fuso usado pelo driver para converter DATETIME <-> Date
+    timezone: fuso,
     waitForConnections: true,
     connectionLimit: inteiroPositivo(process.env.DB_CONNECTION_LIMIT, emServerless ? 3 : 10),
     maxIdle: emServerless ? 1 : inteiroPositivo(process.env.DB_CONNECTION_LIMIT, 10),
@@ -53,14 +75,38 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
+if (fusoSessao) {
+    // O evento ocorre antes de a conexão ser entregue; o mysql2 executa os comandos de
+    // uma conexão em ordem, então o SET roda antes de qualquer consulta da aplicação.
+    pool.on('connection', (conexao) => {
+        conexao.query('SET time_zone = ?', [fusoSessao], (erro) => {
+            if (erro) {
+                console.error('Não foi possível definir o fuso da sessão MySQL:', erro.message);
+                conexao.destroy();
+            }
+        });
+    });
+}
+
+/** Testa a conexão e informa o destino (sem credenciais). */
 async function testarConexao() {
     let conexao;
 
     try {
         conexao = await pool.getConnection();
 
+        const [[sessao]] = await conexao.query(
+            'SELECT @@session.time_zone AS fuso_sessao, VERSION() AS versao'
+        );
+        const [statusSsl] = await conexao.query("SHOW SESSION STATUS LIKE 'Ssl_cipher'");
+        const cifra = statusSsl[0]?.Value;
+
         console.log('Conexão com o MySQL realizada com sucesso!');
+        console.log(`Servidor: ${process.env.DB_HOST}:${inteiroPositivo(process.env.DB_PORT, 3306)}`);
         console.log(`Banco conectado: ${process.env.DB_NAME}`);
+        console.log(`SSL/TLS: ${cifra ? `ativo (${cifra})` : 'inativo'}`);
+        console.log(`Fuso: driver ${fuso} | sessão ${sessao.fuso_sessao}`);
+        console.log(`Versão do servidor: ${sessao.versao}`);
     } catch (erro) {
         console.error('Erro ao conectar ao MySQL:', erro.message);
         throw erro;
