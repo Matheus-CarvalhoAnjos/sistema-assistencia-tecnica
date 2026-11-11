@@ -9,6 +9,9 @@
  *   o script recusa o root e qualquer outro usuário.
  * - A senha é pedida no terminal, sem eco, duas vezes. Nunca é aceita por argumento,
  *   arquivo ou variável de ambiente, e nunca aparece em logs ou mensagens de erro.
+ *   Use PowerShell, Prompt de Comando ou o terminal do VS Code: no Git Bash (mintty) o
+ *   Node não reconhece o terminal como interativo e o script se recusa a continuar.
+ *   Teclas especiais (setas, Delete...) são ignoradas; para corrigir, use Backspace.
  * - O cadastro é feito por usuarioService.criar(): mesmas validações (nome, e-mail
  *   normalizado e sem duplicidade, senha de 8 a 72 bytes), bcrypt custo 10 e gravação
  *   pelo usuarioRepository. O perfil é sempre ADMINISTRADOR.
@@ -54,11 +57,43 @@ function lerArgumentos(argv) {
     return valores;
 }
 
+/**
+ * Interpreta as teclas recebidas do terminal em modo raw (função pura, testada em
+ * test/criarAdministrador.test.js). Atualiza `estado.valor` e retorna "fim" (Enter),
+ * "cancelado" (Ctrl+C) ou null (continuar lendo).
+ * Teclas especiais (setas, Delete, Home, End, F1...) chegam como sequências que começam
+ * com ESC; a sequência inteira é descartada, inclusive quando chega dividida em blocos.
+ */
+function interpretarTeclas(estado, bloco) {
+    for (const caractere of bloco) {
+        if (estado.escape === 1) { // logo após ESC: "[" (CSI) ou "O" (SS3) abrem sequência
+            estado.escape = (caractere === "[" || caractere === "O") ? 2 : 0;
+            continue;
+        }
+        if (estado.escape === 2) { // dentro da sequência: termina no byte final (@ a ~)
+            if (caractere >= "@" && caractere <= "~") estado.escape = 0;
+            continue;
+        }
+        if (caractere === "\u001b") {
+            estado.escape = 1;
+            continue;
+        }
+        if (caractere === "\r" || caractere === "\n") return "fim";
+        if (caractere === "\u0003") return "cancelado"; // Ctrl+C
+        if (caractere === "\u0008" || caractere === "\u007f") { // Backspace
+            estado.valor = Array.from(estado.valor).slice(0, -1).join("");
+            continue;
+        }
+        if (caractere >= " ") estado.valor += caractere;
+    }
+    return null;
+}
+
 /** Pede um texto no terminal sem exibir os caracteres digitados. */
 function perguntarOculto(pergunta) {
     return new Promise((resolve, reject) => {
         const entrada = process.stdin;
-        let valor = "";
+        const estado = { valor: "", escape: 0 };
 
         process.stdout.write(pergunta);
         entrada.setRawMode(true);
@@ -73,22 +108,13 @@ function perguntarOculto(pergunta) {
         };
 
         function aoDigitar(bloco) {
-            for (const caractere of bloco) {
-                if (caractere === "\r" || caractere === "\n") {
-                    encerrar();
-                    return resolve(valor);
-                }
-                if (caractere === "\u0003") { // Ctrl+C
-                    encerrar();
-                    return reject(new Interrupcao("Cancelado pelo usuário. Nada foi gravado."));
-                }
-                if (caractere === "\u0008" || caractere === "\u007f") { // Backspace
-                    valor = valor.slice(0, -1);
-                    continue;
-                }
-                if (caractere >= " ") {
-                    valor += caractere;
-                }
+            const resultado = interpretarTeclas(estado, bloco);
+            if (resultado === "fim") {
+                encerrar();
+                resolve(estado.valor);
+            } else if (resultado === "cancelado") {
+                encerrar();
+                reject(new Interrupcao("Cancelado pelo usuário. Nada foi gravado."));
             }
         }
 
@@ -201,13 +227,18 @@ async function executar() {
     interromper("Número máximo de tentativas de senha atingido. Nada foi gravado.");
 }
 
-executar()
-    .catch((erro) => {
-        // Só mensagens próprias são exibidas; erros inesperados mostram apenas o código
-        const mensagem = erro instanceof Interrupcao
-            ? erro.message
-            : `Erro inesperado (${erro.code || erro.name}). Nada foi exibido do conteúdo por segurança.`;
-        console.error(`\nINTERROMPIDO: ${mensagem}`);
-        process.exitCode = 1;
-    })
-    .finally(() => pool.end().catch(() => {}));
+// Exportado só para os testes; o cadastro roda apenas quando o arquivo é executado diretamente
+module.exports = { interpretarTeclas };
+
+if (require.main === module) {
+    executar()
+        .catch((erro) => {
+            // Só mensagens próprias são exibidas; erros inesperados mostram apenas o código
+            const mensagem = erro instanceof Interrupcao
+                ? erro.message
+                : `Erro inesperado (${erro.code || erro.name}). Detalhes omitidos por segurança.`;
+            console.error(`\nINTERROMPIDO: ${mensagem}`);
+            process.exitCode = 1;
+        })
+        .finally(() => pool.end().catch(() => {}));
+}
