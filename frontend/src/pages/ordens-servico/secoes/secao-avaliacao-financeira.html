@@ -1,0 +1,104 @@
+@if (avaliacao(); as a) {
+  @if (a.obrigatoria) {
+    <section class="painel" aria-labelledby="avaliacao-titulo">
+      <div class="cabecalho-secao">
+        <h2 id="avaliacao-titulo">Avaliação financeira</h2>
+        @if (modo() === null) {
+          @if (a.pendente) {
+            <button class="botao botao-pequeno botao-primario" type="button" (click)="abrir('ORIGINAL')">Registrar avaliação</button>
+          } @else {
+            <button class="botao botao-pequeno" type="button" (click)="abrir('REVISAO')">Registrar revisão</button>
+          }
+        }
+      </div>
+
+      @if (a.pendente) {
+        <p class="aviso aviso-erro" id="avaliacao-pendente">
+          <strong>Avaliação obrigatória pendente.</strong>
+          OS encerrada por impossibilidade técnica durante o reparo, com pagamento confirmado: defina o valor a reembolsar (pode ser zero).
+          Os reembolsos desta OS ficam bloqueados até o registro.
+        </p>
+      }
+
+      <dl class="resumo">
+        @if (a.vigente; as v) {
+          <div><dt>Valor definido</dt><dd>{{ formatarMoeda(v.valor_definido) }}</dd></div>
+          <div><dt>Já reembolsado</dt><dd>{{ formatarMoeda(a.total_reembolsado_avaliacao) }}</dd></div>
+          <div><dt>Falta reembolsar</dt><dd>{{ formatarMoeda(a.saldo_a_reembolsar ?? 0) }}</dd></div>
+        }
+        <div><dt>Disponível para devolução</dt><dd>{{ formatarMoeda(a.total_disponivel) }}</dd></div>
+      </dl>
+
+      @if (modo(); as m) {
+        <form class="formulario" [formGroup]="form" (ngSubmit)="revisar()" novalidate>
+          <h3>{{ m === 'REVISAO' ? 'Revisão da avaliação' : 'Nova avaliação' }}</h3>
+          <div class="campo">
+            <label for="campo-valor-definido">Valor definido para reembolso (R$) *</label>
+            <input id="campo-valor-definido" type="number" step="0.01" [min]="minimo()" [max]="maximo()" formControlName="valor_definido"
+              aria-describedby="dica-valor-definido" />
+            <span class="dica" id="dica-valor-definido">
+              Entre {{ formatarMoeda(minimo()) }} e {{ formatarMoeda(maximo()) }}.
+              @if (minimo() === 0) { Zero registra que não haverá devolução. }
+              @else { O mínimo é o valor já reembolsado. }
+            </span>
+          </div>
+          <div class="campo">
+            <label for="campo-justificativa-avaliacao">Justificativa da decisão *</label>
+            <textarea id="campo-justificativa-avaliacao" formControlName="justificativa"></textarea>
+          </div>
+          @if (m === 'REVISAO') {
+            <div class="campo">
+              <label for="campo-motivo-revisao">Motivo da revisão *</label>
+              <textarea id="campo-motivo-revisao" formControlName="motivo_revisao"></textarea>
+              <span class="dica">A avaliação anterior é mantida no registro.</span>
+            </div>
+          }
+
+          @if (confirmando()) {
+            <div class="confirmacao" role="group" aria-labelledby="confirmar-avaliacao">
+              <p id="confirmar-avaliacao">
+                <strong>Registrar {{ formatarMoeda(form.getRawValue().valor_definido) }} como valor de reembolso?</strong>
+                O registro não pode ser editado; correções geram nova revisão.
+              </p>
+              <div class="botoes">
+                <button class="botao botao-primario" type="button" (click)="confirmar()" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+                  {{ enviando() ? 'Registrando…' : 'Confirmar registro' }}
+                </button>
+                <button class="botao" type="button" (click)="confirmando.set(false)" [disabled]="enviando()">Voltar</button>
+              </div>
+            </div>
+          } @else {
+            <div class="botoes">
+              <button class="botao botao-primario" type="submit">Continuar</button>
+              <button class="botao" type="button" (click)="fechar()">Cancelar</button>
+            </div>
+          }
+        </form>
+      }
+
+      @if (a.avaliacoes.length) {
+        <ol class="lista-registros formulario" aria-label="Registros da avaliação financeira">
+          @for (r of a.avaliacoes; track r.id_avaliacao) {
+            <li class="registro">
+              <div class="registro-topo">
+                <strong>{{ rotulo(r.tipo, r.id_avaliacao_revisada) }} · nº {{ r.id_avaliacao }} · {{ formatarMoeda(r.valor_definido) }}</strong>
+                @if (r.id_avaliacao === a.vigente?.id_avaliacao) {
+                  <span class="etiqueta" data-tom="verde">Vigente</span>
+                } @else {
+                  <span class="etiqueta" data-tom="neutro">Substituída</span>
+                }
+              </div>
+              <span class="secundario">{{ formatarDataHora(r.data_avaliacao) }}{{ r.nome_usuario ? ' · ' + r.nome_usuario : '' }}</span>
+              <p class="texto-longo">{{ r.justificativa }}</p>
+              @if (r.motivo_revisao) {
+                <span class="secundario">Motivo da revisão: {{ r.motivo_revisao }}</span>
+              }
+            </li>
+          }
+        </ol>
+      }
+
+      <app-mensagem-acao [mensagem]="mensagem()" />
+    </section>
+  }
+}

@@ -1,0 +1,347 @@
+<section class="pagina" aria-labelledby="solicitacao-titulo">
+  @if (resultado(); as criada) {
+    <!-- Confirmação: a consulta posterior é feita pelas Ordens de Serviço -->
+    <header class="cabecalho">
+      <div>
+        <p class="eyebrow">SOLICITAÇÃO REGISTRADA</p>
+        <h1 id="resultado-titulo" tabindex="-1">Solicitação nº {{ criada.id_solicitacao }} aberta</h1>
+        <p class="descricao">
+          {{ criada.itens.length }}
+          {{ criada.itens.length === 1 ? 'equipamento registrado; a Ordem de Serviço foi gerada.' : 'equipamentos registrados; uma Ordem de Serviço foi gerada para cada um.' }}
+        </p>
+      </div>
+      <button class="botao botao-primario" type="button" (click)="novaSolicitacao()">Abrir outra solicitação</button>
+    </header>
+
+    <p class="aviso aviso-sucesso" role="status">Solicitação cadastrada com sucesso.</p>
+
+    <div class="painel">
+      <h2>Ordens de Serviço geradas</h2>
+      <ul class="lista-os">
+        @for (item of criada.itens; track item.id_item) {
+          <li>
+            <strong class="numero-os">OS nº {{ item.id_os }}</strong>
+            <span>{{ item.tipo_equipamento }} · {{ item.marca }} {{ item.modelo }}</span>
+            <span class="detalhe">
+              @if (item.acessorios.length) {
+                Acessórios:
+                @for (a of item.acessorios; track a.id_acessorio_recebido; let ultimo = $last) {
+                  {{ a.quantidade }}× {{ a.descricao_acessorio }}{{ ultimo ? '' : ', ' }}
+                }
+              } @else {
+                Sem acessórios
+              }
+            </span>
+          </li>
+        }
+      </ul>
+      <p class="descricao">As OS começam sem técnico responsável; a atribuição é feita na Ordem de Serviço.</p>
+    </div>
+  } @else {
+    <header class="cabecalho">
+      <div>
+        <p class="eyebrow">ATENDIMENTO</p>
+        <h1 id="solicitacao-titulo">Nova solicitação</h1>
+        <p class="descricao">Cada equipamento gera sua própria Ordem de Serviço. Campos com * são obrigatórios.</p>
+      </div>
+    </header>
+
+    @if (erro(); as mensagemErro) {
+      <p class="aviso aviso-erro" role="alert" tabindex="-1">{{ mensagemErro }}</p>
+    }
+
+    <form [formGroup]="formulario" (ngSubmit)="abrirSolicitacao()" novalidate>
+      <!-- 1. Cliente -->
+      <section class="painel" aria-labelledby="bloco-cliente">
+        <h2 id="bloco-cliente"><span class="passo">1</span> Cliente *</h2>
+
+        @if (clienteSelecionado(); as c) {
+          <div class="cliente-escolhido">
+            <div>
+              <strong>{{ c.nome_razao_social }}</strong>
+              <span>
+                {{ c.tipo_pessoa === 'JURIDICA' ? 'CNPJ' : 'CPF' }} {{ formatarDocumento(c.cpf_cnpj, c.tipo_pessoa) }}
+                · {{ formatarTelefone(c.telefone) }}
+              </span>
+            </div>
+            <button class="botao" type="button" (click)="trocarCliente()">Trocar</button>
+          </div>
+        } @else {
+          <div class="campo">
+            <label for="busca-cliente">Buscar cliente por nome ou CPF/CNPJ</label>
+            <input
+              id="busca-cliente"
+              type="search"
+              autocomplete="off"
+              placeholder="Digite ao menos 2 caracteres"
+              [value]="termoCliente()"
+              (input)="aoBuscarCliente($event)"
+              [attr.aria-invalid]="tentouEnviar() && !clienteSelecionado()"
+              [attr.aria-describedby]="tentouEnviar() && !clienteSelecionado() ? 'erro-cliente' : null"
+            />
+            @if (tentouEnviar() && !clienteSelecionado()) {
+              <span class="erro-campo" id="erro-cliente">Selecione o cliente da solicitação.</span>
+            }
+          </div>
+
+          <div class="sugestoes" aria-live="polite">
+            @if (buscandoClientes()) {
+              <p class="descricao">Buscando…</p>
+            } @else if (termoCliente().trim().length >= 2 && sugestoes().length === 0) {
+              <p class="descricao">Nenhum cliente encontrado.</p>
+            }
+            @if (sugestoes().length) {
+              <ul>
+                @for (s of sugestoes(); track s.id_cliente) {
+                  <li>
+                    <button type="button" class="sugestao" (click)="selecionarCliente(s)">
+                      <strong>{{ s.nome_razao_social }}</strong>
+                      <span>{{ formatarDocumento(s.cpf_cnpj, s.tipo_pessoa) }} · {{ s.cidade }}/{{ s.uf }}</span>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+
+          <a class="link" routerLink="/clientes/novo" [queryParams]="{ retorno: 'solicitacao' }">
+            Cadastrar novo cliente
+          </a>
+        }
+      </section>
+
+      <!-- 2. Problema relatado -->
+      <section class="painel" aria-labelledby="bloco-problema">
+        <h2 id="bloco-problema"><span class="passo">2</span> Problema relatado *</h2>
+        <div class="campo">
+          <label for="descricao_inicial">Descrição informada pelo cliente</label>
+          <textarea
+            id="descricao_inicial"
+            rows="3"
+            formControlName="descricao_inicial"
+            [attr.aria-invalid]="!!mensagem(formulario.controls.descricao_inicial, 'a descrição do problema')"
+            [attr.aria-describedby]="mensagem(formulario.controls.descricao_inicial, 'a descrição do problema') ? 'erro-descricao' : null"
+          ></textarea>
+          @if (mensagem(formulario.controls.descricao_inicial, 'a descrição do problema'); as m) {
+            <span class="erro-campo" id="erro-descricao">{{ m }}</span>
+          }
+        </div>
+      </section>
+
+      <!-- 3. Equipamentos -->
+      <section class="painel" aria-labelledby="bloco-equipamentos">
+        <div class="titulo-bloco">
+          <h2 id="bloco-equipamentos"><span class="passo">3</span> Equipamentos ({{ itens.length }})</h2>
+          <a class="link-inline" routerLink="/acessorios">Catálogo de acessórios</a>
+        </div>
+
+        @if (erroCatalogo(); as m) {
+          <p class="aviso aviso-erro">
+            Não foi possível carregar o catálogo de acessórios ({{ m }}). Você pode continuar sem acessórios.
+            <button class="botao botao-pequeno" type="button" (click)="carregarCatalogo()">Tentar novamente</button>
+          </p>
+        } @else if (!carregandoCatalogo() && catalogo().length === 0) {
+          <p class="aviso aviso-info">
+            Nenhum acessório cadastrado no catálogo. Os equipamentos podem ser registrados sem acessórios,
+            ou você pode <a class="link-inline" routerLink="/acessorios">cadastrar acessórios</a> antes.
+          </p>
+        }
+
+        <div formArrayName="itens" class="equipamentos">
+          @for (grupo of itens.controls; track grupo; let i = $index) {
+            <article
+              class="equipamento"
+              [id]="'equipamento-' + i"
+              [class.aberto]="aberto() === i"
+              [class.com-erro]="errosNoEquipamento(i) > 0"
+              [formGroupName]="i"
+            >
+              <header class="equipamento-topo">
+                <button
+                  type="button"
+                  class="alternar"
+                  (click)="alternar(i)"
+                  [attr.aria-expanded]="aberto() === i"
+                  [attr.aria-controls]="'equipamento-campos-' + i"
+                >
+                  <span class="numero">Equipamento {{ i + 1 }}</span>
+                  <span class="resumo">{{ resumo(i) }}</span>
+                  @if (errosNoEquipamento(i) > 0) {
+                    <span class="selo-erro">{{ errosNoEquipamento(i) }} {{ errosNoEquipamento(i) === 1 ? 'pendência' : 'pendências' }}</span>
+                  }
+                </button>
+                <button
+                  type="button"
+                  class="botao botao-pequeno"
+                  (click)="removerEquipamento(i)"
+                  [disabled]="itens.length === 1"
+                  [attr.aria-label]="'Remover equipamento ' + (i + 1)"
+                >
+                  Remover
+                </button>
+              </header>
+
+              <div class="equipamento-campos" [id]="'equipamento-campos-' + i" [hidden]="aberto() !== i">
+                <div class="linha">
+                  <div class="campo">
+                    <label [for]="'eq-' + i + '-tipo_equipamento'">Tipo *</label>
+                    <input
+                      [id]="'eq-' + i + '-tipo_equipamento'"
+                      formControlName="tipo_equipamento"
+                      placeholder="Ex.: Notebook"
+                      [attr.aria-invalid]="!!mensagem(grupo.controls.tipo_equipamento, 'o tipo')"
+                    />
+                    @if (mensagem(grupo.controls.tipo_equipamento, 'o tipo'); as m) {
+                      <span class="erro-campo">{{ m }}</span>
+                    }
+                  </div>
+                  <div class="campo">
+                    <label [for]="'eq-' + i + '-marca'">Marca *</label>
+                    <input
+                      [id]="'eq-' + i + '-marca'"
+                      formControlName="marca"
+                      [attr.aria-invalid]="!!mensagem(grupo.controls.marca, 'a marca')"
+                    />
+                    @if (mensagem(grupo.controls.marca, 'a marca'); as m) {
+                      <span class="erro-campo">{{ m }}</span>
+                    }
+                  </div>
+                  <div class="campo">
+                    <label [for]="'eq-' + i + '-modelo'">Modelo *</label>
+                    <input
+                      [id]="'eq-' + i + '-modelo'"
+                      formControlName="modelo"
+                      [attr.aria-invalid]="!!mensagem(grupo.controls.modelo, 'o modelo')"
+                    />
+                    @if (mensagem(grupo.controls.modelo, 'o modelo'); as m) {
+                      <span class="erro-campo">{{ m }}</span>
+                    }
+                  </div>
+                  <div class="campo">
+                    <label [for]="'eq-' + i + '-numero_serie'">Número de série</label>
+                    <input
+                      [id]="'eq-' + i + '-numero_serie'"
+                      formControlName="numero_serie"
+                      [attr.aria-invalid]="!!mensagem(grupo.controls.numero_serie, 'o número de série')"
+                    />
+                    @if (mensagem(grupo.controls.numero_serie, 'o número de série'); as m) {
+                      <span class="erro-campo">{{ m }}</span>
+                    }
+                  </div>
+                </div>
+
+                <div class="linha">
+                  <div class="campo">
+                    <label [for]="'eq-' + i + '-estado_fisico'">Estado físico do aparelho *</label>
+                    <textarea
+                      [id]="'eq-' + i + '-estado_fisico'"
+                      rows="2"
+                      formControlName="estado_fisico"
+                      placeholder="Ex.: Arranhões na tampa, tela sem trincas"
+                      [attr.aria-invalid]="!!mensagem(grupo.controls.estado_fisico, 'o estado físico')"
+                    ></textarea>
+                    @if (mensagem(grupo.controls.estado_fisico, 'o estado físico'); as m) {
+                      <span class="erro-campo">{{ m }}</span>
+                    }
+                  </div>
+                  <div class="campo">
+                    <label [for]="'eq-' + i + '-observacoes'">Observações</label>
+                    <textarea [id]="'eq-' + i + '-observacoes'" rows="2" formControlName="observacoes"></textarea>
+                  </div>
+                </div>
+
+                <fieldset class="acessorios" formArrayName="acessorios">
+                  <legend>Acessórios recebidos</legend>
+
+                  @for (acessorio of acessoriosDe(i).controls; track acessorio; let j = $index) {
+                    <div class="acessorio" [formGroupName]="j">
+                      <div class="campo">
+                        <label [for]="'eq-' + i + '-ac-' + j">Acessório *</label>
+                        <select
+                          [id]="'eq-' + i + '-ac-' + j"
+                          formControlName="id_acessorio"
+                          [attr.aria-invalid]="!!mensagem(acessorio.controls.id_acessorio, 'o acessório')"
+                        >
+                          <option [ngValue]="null">Selecione</option>
+                          @for (item of catalogo(); track item.id_acessorio) {
+                            <option [ngValue]="item.id_acessorio">{{ item.descricao }}</option>
+                          }
+                        </select>
+                        @if (mensagem(acessorio.controls.id_acessorio, 'o acessório'); as m) {
+                          <span class="erro-campo">{{ m }}</span>
+                        }
+                      </div>
+                      <div class="campo quantidade">
+                        <label [for]="'eq-' + i + '-ac-' + j + '-qtd'">Qtd. *</label>
+                        <input
+                          [id]="'eq-' + i + '-ac-' + j + '-qtd'"
+                          type="number"
+                          min="1"
+                          step="1"
+                          formControlName="quantidade"
+                          [attr.aria-invalid]="!!mensagem(acessorio.controls.quantidade, 'a quantidade')"
+                        />
+                        @if (mensagem(acessorio.controls.quantidade, 'a quantidade'); as m) {
+                          <span class="erro-campo">{{ m }}</span>
+                        }
+                      </div>
+                      <div class="campo">
+                        <label [for]="'eq-' + i + '-ac-' + j + '-obs'">Observação</label>
+                        <input [id]="'eq-' + i + '-ac-' + j + '-obs'" formControlName="observacoes" />
+                      </div>
+                      <button
+                        type="button"
+                        class="botao botao-pequeno remover-acessorio"
+                        (click)="removerAcessorio(i, j)"
+                        [attr.aria-label]="'Remover acessório ' + (j + 1) + ' do equipamento ' + (i + 1)"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  } @empty {
+                    <p class="descricao">Nenhum acessório adicionado.</p>
+                  }
+
+                  <button
+                    type="button"
+                    class="botao botao-pequeno"
+                    (click)="adicionarAcessorio(i)"
+                    [disabled]="catalogo().length === 0"
+                  >
+                    Adicionar acessório
+                  </button>
+                </fieldset>
+              </div>
+            </article>
+          }
+        </div>
+
+        <button
+          type="button"
+          class="botao adicionar-equipamento"
+          (click)="adicionarEquipamento()"
+          [disabled]="itens.length >= maxEquipamentos"
+        >
+          Adicionar equipamento
+        </button>
+        @if (itens.length >= maxEquipamentos) {
+          <p class="descricao">Limite de {{ maxEquipamentos }} equipamentos por solicitação.</p>
+        }
+      </section>
+
+      <!-- 4. Revisão e envio -->
+      <div class="painel rodape">
+        <p class="resumo-envio">
+          @if (clienteSelecionado(); as c) {
+            <strong>{{ c.nome_razao_social }}</strong> ·
+          }
+          {{ itens.length }} {{ itens.length === 1 ? 'equipamento' : 'equipamentos' }} ·
+          {{ itens.length }} {{ itens.length === 1 ? 'OS será gerada' : 'OS serão geradas' }}
+        </p>
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Abrindo…' : 'Abrir solicitação' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

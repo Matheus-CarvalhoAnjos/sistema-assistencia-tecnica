@@ -1,0 +1,150 @@
+<section class="painel" aria-labelledby="pagamentos-titulo">
+  <div class="cabecalho-secao">
+    <h2 id="pagamentos-titulo">Pagamentos</h2>
+    @if (podeRegistrar() && !registrando()) {
+      <button class="botao botao-pequeno botao-primario" type="button" (click)="abrirRegistro()">Registrar pagamento</button>
+    }
+  </div>
+
+  @if (resumo(); as r) {
+    <dl class="resumo">
+      @if (r.total_abatido) {
+        <div><dt>Orçamento aprovado</dt><dd>{{ formatarMoeda(r.total_orcado) }}</dd></div>
+        <div><dt>Abatimentos</dt><dd>− {{ formatarMoeda(r.total_abatido) }}</dd></div>
+      }
+      <div><dt>Total devido</dt><dd>{{ formatarMoeda(r.total_devido ?? r.total_orcado) }}</dd></div>
+      <div><dt>Total pago</dt><dd>{{ formatarMoeda(r.total_pago) }}</dd></div>
+      <div><dt>Pendente de confirmação</dt><dd>{{ formatarMoeda(r.pagamentos_pendentes) }}</dd></div>
+      <div><dt>Saldo restante</dt><dd>{{ formatarMoeda(r.saldo_devedor) }}</dd></div>
+    </dl>
+    @if (!r.tem_orcamento_aprovado) {
+      @if (ordem().equipamento.garantia_status === 'SIM') {
+        <p class="dica">Reparo coberto pela garantia: sem orçamento e sem cobrança.</p>
+      } @else {
+        <p class="dica">Pagamentos ficam disponíveis depois que o cliente aprova um orçamento.</p>
+      }
+    }
+    @switch (semValorParaRegistro()) {
+      @case ('quitado') { <p class="dica" id="dica-saldo-quitado">Saldo quitado: não há valor para registrar um novo pagamento.</p> }
+      @case ('reservado') { <p class="dica" id="dica-saldo-reservado">O saldo restante já está reservado por pagamentos pendentes de confirmação.</p> }
+    }
+  }
+
+  @if (encerradaSemReparo() && podeOperar()) {
+    @if (avaliacaoPendente()) {
+      <p class="dica" id="dica-avaliacao-pendente">OS encerrada sem reparo: não há novas confirmações. Registre a avaliação financeira antes de qualquer reembolso.</p>
+    } @else {
+      <p class="dica">OS encerrada sem reparo: não há novas confirmações. Reembolsos seguem o valor definido na avaliação financeira, quando houver.</p>
+    }
+  }
+
+  @if (registrando()) {
+    <form class="formulario" [formGroup]="form" (ngSubmit)="registrar()" novalidate>
+      <h3>Novo pagamento</h3>
+      <div class="linha-campos">
+        <div class="campo">
+          <label for="campo-valor-pagamento">Valor (R$) *</label>
+          <input id="campo-valor-pagamento" type="number" min="0.01" step="0.01" [max]="disponivel()" formControlName="valor"
+            [attr.aria-invalid]="valorInvalido()" aria-describedby="dica-valor-pagamento" />
+        </div>
+        <div class="campo">
+          <label for="campo-forma-pagamento">Forma de pagamento *</label>
+          <select id="campo-forma-pagamento" formControlName="forma_pagamento">
+            @for (f of formas; track f.codigo) {
+              <option [value]="f.codigo">{{ f.titulo }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      @if (valorInvalido()) {
+        <span class="erro-campo" id="dica-valor-pagamento">Informe um valor entre R$ 0,01 e {{ formatarMoeda(disponivel()) }}.</span>
+      } @else {
+        <span class="dica" id="dica-valor-pagamento">Disponível para registro: {{ formatarMoeda(disponivel()) }} (saldo menos pagamentos pendentes).</span>
+      }
+      <div class="botoes">
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Registrando…' : 'Registrar' }}
+        </button>
+        <button class="botao" type="button" (click)="registrando.set(false)" [disabled]="enviando()">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  @if (pagamentos().length) {
+    <ol class="lista-registros formulario" aria-label="Pagamentos da OS">
+      @for (p of pagamentos(); track p.id_pagamento) {
+        <li class="registro">
+          <div class="registro-topo">
+            <strong>Pagamento nº {{ p.id_pagamento }} · {{ formatarMoeda(p.valor) }} · {{ rotuloForma(p.forma_pagamento) }}</strong>
+            <span class="etiqueta" [attr.data-tom]="rotuloStatus(p.status).tom">{{ rotuloStatus(p.status).titulo }}</span>
+          </div>
+          @if (p.data_pagamento) {
+            <span class="secundario">Confirmado em {{ formatarDataHora(p.data_pagamento) }}</span>
+          }
+          @if (p.reembolsos?.length) {
+            <ul class="lista-reembolsos" [attr.aria-label]="'Reembolsos do pagamento nº ' + p.id_pagamento">
+              @for (r of p.reembolsos; track r.id_reembolso) {
+                <li class="secundario">
+                  Reembolso de {{ formatarMoeda(r.valor) }} em {{ formatarDataHora(r.data_reembolso) }}{{ r.nome_usuario ? ' por ' + r.nome_usuario : '' }} · {{ r.justificativa }}
+                </li>
+              }
+            </ul>
+            @if (reembolsoParcial(p)) {
+              <span class="secundario">Reembolsado {{ formatarMoeda(p.valor_reembolsado ?? 0) }} · disponível para devolução {{ formatarMoeda(disponivelReembolso(p)) }}</span>
+            }
+          } @else if (p.data_reembolso) {
+            <span class="secundario">Reembolsado em {{ formatarDataHora(p.data_reembolso) }} · {{ p.justificativa_reembolso }}</span>
+          }
+
+          @if (podeOperar()) {
+            @if (acao()?.id === p.id_pagamento) {
+              <div class="confirmacao" role="group" [attr.aria-labelledby]="'confirmar-pagamento-' + p.id_pagamento">
+                <p [id]="'confirmar-pagamento-' + p.id_pagamento">
+                  @switch (acao()?.tipo) {
+                    @case ('CONFIRMADO') { <strong>Confirmar o recebimento de {{ formatarMoeda(p.valor) }}?</strong> }
+                    @case ('CANCELADO') { <strong>Cancelar este pagamento pendente?</strong> O registro é mantido como cancelado. }
+                    @case ('REEMBOLSO') { <strong>Reembolsar até {{ formatarMoeda(disponivelReembolso(p)) }}?</strong> O valor devolvido deixa de contar como pago. }
+                  }
+                </p>
+                @if (acao()?.tipo === 'REEMBOLSO') {
+                  <div class="campo">
+                    <label [for]="'valor-reembolso-' + p.id_pagamento">Valor do reembolso (R$) *</label>
+                    <input [id]="'valor-reembolso-' + p.id_pagamento" type="number" min="0.01" step="0.01" [max]="disponivelReembolso(p)"
+                      [value]="valorReembolso()" (input)="valorReembolso.set($any($event.target).valueAsNumber)"
+                      [attr.aria-describedby]="'dica-reembolso-' + p.id_pagamento" />
+                    <span class="dica" [id]="'dica-reembolso-' + p.id_pagamento">Parcial ou integral; no máximo {{ formatarMoeda(disponivelReembolso(p)) }}.</span>
+                  </div>
+                  <div class="campo">
+                    <label [for]="'justificativa-' + p.id_pagamento">Justificativa *</label>
+                    <textarea [id]="'justificativa-' + p.id_pagamento" [value]="justificativa()" (input)="justificativa.set($any($event.target).value)"></textarea>
+                  </div>
+                }
+                <div class="botoes">
+                  <button class="botao" type="button" (click)="confirmarAcao()" [disabled]="enviando()" [attr.aria-busy]="enviando()"
+                    [class.botao-sucesso]="acao()?.tipo === 'CONFIRMADO'" [class.botao-perigo]="acao()?.tipo !== 'CONFIRMADO'">
+                    {{ enviando() ? 'Salvando…' : 'Confirmar' }}
+                  </button>
+                  <button class="botao" type="button" (click)="acao.set(null)" [disabled]="enviando()">Voltar</button>
+                </div>
+              </div>
+            } @else if (p.status === 'PENDENTE' && !encerradaSemReparo()) {
+              <div class="botoes">
+                <button class="botao botao-sucesso botao-pequeno" type="button" (click)="pedirAcao(p, 'CONFIRMADO')">Confirmar recebimento</button>
+                <button class="botao botao-perigo botao-pequeno" type="button" (click)="pedirAcao(p, 'CANCELADO')">Cancelar</button>
+              </div>
+            } @else if (p.status === 'CONFIRMADO' && disponivelReembolso(p) > 0) {
+              <div class="botoes">
+                <button class="botao botao-perigo botao-pequeno" type="button" (click)="pedirAcao(p, 'REEMBOLSO')"
+                  [disabled]="avaliacaoPendente()" [attr.aria-describedby]="avaliacaoPendente() ? 'dica-avaliacao-pendente' : null">Reembolsar</button>
+              </div>
+            }
+          }
+        </li>
+      }
+    </ol>
+  } @else {
+    <p class="vazio">Nenhum pagamento registrado.</p>
+  }
+
+  <app-mensagem-acao [mensagem]="mensagem()" />
+</section>

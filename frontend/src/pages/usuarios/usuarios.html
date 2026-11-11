@@ -1,0 +1,136 @@
+<section class="pagina" aria-labelledby="usuarios-titulo">
+  <header class="cabecalho">
+    <div>
+      <p class="eyebrow">ADMINISTRAÇÃO</p>
+      <h1 id="usuarios-titulo">Usuários</h1>
+      <p class="descricao">Funcionários com acesso ao sistema. O sistema mantém sempre ao menos um administrador ativo.</p>
+    </div>
+    @if (editando() === null) {
+      <button class="botao botao-primario" type="button" (click)="abrirNovo()">Novo usuário</button>
+    }
+  </header>
+
+  <app-mensagem-acao [mensagem]="mensagem()" />
+
+  @if (editando() !== null) {
+    <form class="painel formulario-usuario" [formGroup]="form" (ngSubmit)="salvar()" novalidate aria-labelledby="form-usuario-titulo">
+      <h2 id="form-usuario-titulo">{{ emEdicao() ? 'Editar ' + emEdicao()!.nome : 'Novo usuário' }}</h2>
+      <div class="linha-campos">
+        <div class="campo">
+          <label for="campo-nome">Nome *</label>
+          <input id="campo-nome" type="text" formControlName="nome" maxlength="100" autocomplete="off"
+            [attr.aria-invalid]="invalido('nome')" />
+          @if (invalido('nome')) { <span class="erro-campo">Informe o nome.</span> }
+        </div>
+        <div class="campo">
+          <label for="campo-email">E-mail *</label>
+          <input id="campo-email" type="email" formControlName="email" maxlength="150" autocomplete="off"
+            [attr.aria-invalid]="invalido('email')" />
+          @if (invalido('email')) { <span class="erro-campo">Informe um e-mail válido.</span> }
+        </div>
+        <div class="campo">
+          <label for="campo-perfil">Perfil *</label>
+          <select id="campo-perfil" formControlName="perfil">
+            @for (p of perfis; track p[0]) {
+              <option [value]="p[0]">{{ p[1] }}</option>
+            }
+          </select>
+        </div>
+        <div class="campo">
+          <label for="campo-senha">{{ emEdicao() ? 'Nova senha' : 'Senha *' }}</label>
+          <input id="campo-senha" type="password" formControlName="senha" autocomplete="new-password"
+            [attr.aria-invalid]="invalido('senha')" aria-describedby="dica-senha" />
+          <span class="dica" id="dica-senha">
+            {{ emEdicao() ? 'Deixe em branco para manter a senha atual. Mínimo de 8 caracteres.' : 'Mínimo de 8 caracteres. Guardada somente como hash.' }}
+          </span>
+          @if (invalido('senha')) { <span class="erro-campo">{{ erroSenha() }}</span> }
+        </div>
+      </div>
+      <div class="botoes">
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Salvando…' : emEdicao() ? 'Salvar alterações' : 'Cadastrar' }}
+        </button>
+        <button class="botao" type="button" (click)="fecharFormulario()" [disabled]="enviando()">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  <div class="painel">
+    <div class="filtros">
+      <div class="campo">
+        <label for="filtro-perfil">Perfil</label>
+        <select id="filtro-perfil" (change)="aoFiltrar('perfil', $event)">
+          <option value="">Todos</option>
+          @for (p of perfis; track p[0]) {
+            <option [value]="p[0]">{{ p[1] }}</option>
+          }
+        </select>
+      </div>
+      <div class="campo">
+        <label for="filtro-situacao">Situação</label>
+        <select id="filtro-situacao" (change)="aoFiltrar('ativo', $event)">
+          <option value="">Todas</option>
+          <option value="1">Ativos</option>
+          <option value="0">Inativos</option>
+        </select>
+      </div>
+    </div>
+
+    <div [attr.aria-busy]="carregando()" aria-live="polite">
+      @if (carregando()) {
+        <p class="estado">Carregando usuários…</p>
+      } @else if (erro(); as mensagem) {
+        <div class="estado" role="alert">
+          <strong>Não foi possível carregar os usuários.</strong>
+          <span>{{ mensagem }}</span>
+          <button class="botao" type="button" (click)="carregar()">Tentar novamente</button>
+        </div>
+      } @else if (usuarios().length === 0) {
+        <p class="estado">Nenhum usuário encontrado com esses filtros.</p>
+      } @else {
+        <div class="tabela-rolagem">
+          <table>
+            <caption class="contagem">{{ usuarios().length }} {{ usuarios().length === 1 ? 'usuário' : 'usuários' }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Nome</th>
+                <th scope="col">E-mail</th>
+                <th scope="col">Perfil</th>
+                <th scope="col">Situação</th>
+                <th scope="col"><span class="visualmente-oculto">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (u of usuarios(); track u.id_usuario) {
+                <tr>
+                  <td>{{ u.nome }} @if (u.id_usuario === idLogado()) { <span class="secundario">(você)</span> }</td>
+                  <td>{{ u.email }}</td>
+                  <td>{{ rotulosPerfil[u.perfil] }}</td>
+                  <td>
+                    <span class="etiqueta" [attr.data-tom]="ativo(u) ? 'verde' : 'neutro'">{{ ativo(u) ? 'Ativo' : 'Inativo' }}</span>
+                  </td>
+                  <td class="acoes-linha">
+                    @if (confirmandoAtivo() === u.id_usuario) {
+                      <span class="confirmacao-linha" role="group" [attr.aria-label]="'Confirmar alteração de ' + u.nome">
+                        <span>{{ ativo(u) ? 'Desativar' : 'Ativar' }} {{ u.nome }}?</span>
+                        <button class="botao botao-pequeno" [class.botao-perigo]="ativo(u)" [class.botao-sucesso]="!ativo(u)" type="button"
+                          (click)="confirmarAtivo(u)" [disabled]="enviando()">Confirmar</button>
+                        <button class="botao botao-pequeno" type="button" (click)="confirmandoAtivo.set(null)" [disabled]="enviando()">Voltar</button>
+                      </span>
+                    } @else {
+                      <button class="botao botao-pequeno" type="button" (click)="abrirEdicao(u)" [attr.aria-label]="'Editar ' + u.nome">Editar</button>
+                      <button class="botao botao-pequeno" [class.botao-perigo]="ativo(u)" type="button"
+                        (click)="mensagem.set(null); confirmandoAtivo.set(u.id_usuario)" [attr.aria-label]="(ativo(u) ? 'Desativar ' : 'Ativar ') + u.nome">
+                        {{ ativo(u) ? 'Desativar' : 'Ativar' }}
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</section>

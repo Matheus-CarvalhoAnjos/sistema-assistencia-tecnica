@@ -1,0 +1,64 @@
+# ==========================================================
+# Sistema de Assistência Técnica: arquivos que NÃO vão para o GitHub
+# (backend/.gitignore, frontend/.gitignore e banco/backups/.gitignore
+#  continuam valendo; as regras abaixo reforçam e complementam)
+# ==========================================================
+
+# ---------- Credenciais e configuração local ----------
+.env
+.env.*
+!.env.example
+*.local.json
+*.pem
+*.key
+*.pfx
+*.p12
+
+# ---------- Dependências, build e cache ----------
+node_modules/
+dist/
+out-tsc/
+.angular/
+coverage/
+tmp/
+
+# ---------- Logs e temporários ----------
+*.log
+npm-debug.log*
+yarn-error.log*
+*.tmp
+*.bak
+~$*
+
+# ---------- Banco de dados: dumps e relatórios locais ----------
+# Backups contêm dados e hashes de senha
+banco/backups/
+*.dump
+# Relatórios de execução local (contêm nome do computador/usuário)
+banco/relatorios/
+
+# ---------- Cópias antigas, pacotes e entregas compactadas ----------
+MATUTADA/
+entregas/
+pacote_colegas/
+*.zip
+*.rar
+*.7z
+
+# ---------- Material de apresentação (arquivos grandes, fora do código) ----------
+evidencias/*.mp4
+apresentacao/
+documentacao/mer/historico/
+documentacao/mer/*_copiar_e_colar.txt
+
+# ---------- Editores e ferramentas (configuração pessoal) ----------
+.idea/
+*.sublime-workspace
+.history/
+.claude/settings.local.json
+**/.claude/settings.local.json
+
+# ---------- Sistema operacional ----------
+.DS_Store
+Thumbs.db
+desktop.ini

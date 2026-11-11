@@ -1,0 +1,33 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "start"
+      ],
+      "port": 4200
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "backend",
+        "start"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "backend-teste",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "backend/integracao/servidor-teste.js"
+      ],
+      "port": 3000
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+<header class="header-bar">
+  <a class="brand" routerLink="/" aria-label="Sistema de Assistência Técnica, início">
+    <span class="brand-mark" aria-hidden="true">AT</span>
+    <span class="brand-name">Sistema de Assistência Técnica</span>
+  </a>
+
+  <!-- Notificações: fora do escopo desta versão (desabilitadas e identificadas como indisponíveis) -->
+  <div class="header-actions">
+    <button class="notification-button" type="button" aria-label="Notificações indisponíveis nesta versão" title="Notificações indisponíveis nesta versão" disabled>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21h4" />
+      </svg>
+    </button>
+
+    @if (usuario(); as usuarioAtual) {
+      <div class="user-identity">
+        <span class="user-name">{{ usuarioAtual.nome }}</span>
+        <span class="user-role">{{ perfilLegivel() }}</span>
+      </div>
+      <span class="user-avatar" aria-hidden="true">{{ iniciais() }}</span>
+      <button class="logout-button" type="button" (click)="sair.emit()">Sair</button>
+    } @else {
+      <div class="user-identity signed-out">
+        <span class="user-name">Sessão não conectada</span>
+        <span class="user-role">Aguardando autenticação</span>
+      </div>
+      <span class="session-indicator" aria-hidden="true"></span>
+    }
+  </div>
+</header>

@@ -1,0 +1,98 @@
+<section class="painel" aria-labelledby="expedicao-titulo">
+  <div class="cabecalho-secao">
+    <h2 id="expedicao-titulo">Expedição</h2>
+    @if (podeRegistrar() && !registrando() && !exigeQuitacao()) {
+      <button class="botao botao-pequeno botao-primario" type="button" (click)="abrirRegistro()">Registrar devolução</button>
+    }
+  </div>
+
+  @if (podeOperar() && avaliacaoPendente()) {
+    <p class="dica" id="aviso-pendencia-financeira">
+      <strong>Pendência financeira:</strong> a avaliação de reembolso desta OS ainda não foi registrada.
+      A devolução do equipamento pode prosseguir normalmente; o reembolso continua bloqueado até a avaliação.
+    </p>
+  }
+
+  @if (expedicao(); as e) {
+    <dl class="dados">
+      <div><dt>Forma</dt><dd>{{ e.forma_entrega === 'ENVIO' ? 'Envio' : 'Retirada no balcão' }}</dd></div>
+      <div><dt>Situação</dt><dd><span class="etiqueta" [attr.data-tom]="proximoStatus() ? 'azul' : 'verde'">{{ rotuloStatus(e.status) }}</span></dd></div>
+      @if (e.forma_entrega === 'ENVIO') {
+        <div><dt>Despachado em</dt><dd>{{ e.data_envio ? formatarDataHora(e.data_envio) : '—' }}</dd></div>
+        <div><dt>Rastreio</dt><dd>{{ e.codigo_rastreio || '—' }}</dd></div>
+      }
+      <div><dt>{{ e.forma_entrega === 'ENVIO' ? 'Entregue em' : 'Retirado em' }}</dt><dd>{{ e.data_entrega ? formatarDataHora(e.data_entrega) : '—' }}</dd></div>
+    </dl>
+
+    @if (podeOperar() && proximoStatus(); as proximo) {
+      <div class="formulario">
+        @if (confirmando()) {
+          <div class="confirmacao" role="group" aria-labelledby="confirmar-expedicao">
+            <p id="confirmar-expedicao">
+              <strong>{{ rotuloAcao(proximo) }}?</strong>
+              @if (proximo === 'ENTREGUE' || proximo === 'RETIRADO') {
+                @if (ordem().status === 'AGUARDANDO_EXPEDICAO') { A OS será finalizada. } @else { A OS continua encerrada sem reparo. }
+              }
+            </p>
+            @if (proximo === 'EM_TRANSITO') {
+              <div class="campo">
+                <label for="campo-rastreio-despacho">Código de rastreio (opcional)</label>
+                <input id="campo-rastreio-despacho" type="text" maxlength="100" [value]="rastreio()" (input)="rastreio.set($any($event.target).value)" />
+              </div>
+            }
+            <div class="botoes">
+              <button class="botao botao-sucesso" type="button" (click)="avancar()" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+                {{ enviando() ? 'Salvando…' : 'Confirmar' }}
+              </button>
+              <button class="botao" type="button" (click)="confirmando.set(false)" [disabled]="enviando()">Voltar</button>
+            </div>
+          </div>
+        } @else {
+          <div class="botoes">
+            <button class="botao botao-primario botao-pequeno" type="button" (click)="mensagem.set(null); confirmando.set(true)">{{ rotuloAcao(proximo) }}</button>
+          </div>
+        }
+      </div>
+    }
+  } @else {
+    <p class="vazio">Nenhuma devolução registrada.</p>
+    @if (podeOperar() && exigeQuitacao()) {
+      <p class="dica">A devolução exige a quitação do orçamento aprovado. Saldo restante: {{ formatarMoeda(saldoDevedor()) }}.</p>
+    }
+  }
+
+  @if (registrando()) {
+    <form class="formulario" (submit)="$event.preventDefault(); registrar()">
+      <h3>Registrar devolução</h3>
+      <fieldset class="campo">
+        <legend>Forma de devolução *</legend>
+        <div class="opcoes">
+          <label class="opcao">
+            <input type="radio" name="forma-entrega" value="RETIRADA" [checked]="forma() === 'RETIRADA'" (change)="forma.set('RETIRADA')" />
+            Retirada no balcão
+          </label>
+          <label class="opcao">
+            <input type="radio" name="forma-entrega" value="ENVIO" [checked]="forma() === 'ENVIO'" (change)="forma.set('ENVIO')" />
+            Envio
+          </label>
+        </div>
+      </fieldset>
+      @if (forma() === 'ENVIO') {
+        <div class="campo">
+          <label for="campo-rastreio">Código de rastreio (opcional)</label>
+          <input id="campo-rastreio" type="text" maxlength="100" [value]="rastreio()" (input)="rastreio.set($any($event.target).value)"
+            aria-describedby="dica-rastreio" />
+          <span class="dica" id="dica-rastreio">Também pode ser informado no despacho.</span>
+        </div>
+      }
+      <div class="botoes">
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Registrando…' : 'Registrar' }}
+        </button>
+        <button class="botao" type="button" (click)="registrando.set(false)" [disabled]="enviando()">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  <app-mensagem-acao [mensagem]="mensagem()" />
+</section>

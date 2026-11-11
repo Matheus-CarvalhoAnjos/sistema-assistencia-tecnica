@@ -1,0 +1,90 @@
+<section class="pagina" aria-labelledby="clientes-titulo">
+  <header class="cabecalho">
+    <div>
+      <p class="eyebrow">CADASTRO</p>
+      <h1 id="clientes-titulo">Clientes</h1>
+      <p class="descricao">Pessoas físicas e jurídicas atendidas pela assistência</p>
+    </div>
+    <a class="botao botao-primario" routerLink="/clientes/novo">Novo cliente</a>
+  </header>
+
+  <div class="painel">
+    <div class="busca">
+      <label for="busca-clientes">Buscar por nome ou CPF/CNPJ</label>
+      <div class="busca-campo">
+        <input
+          id="busca-clientes"
+          type="search"
+          autocomplete="off"
+          placeholder="Ex.: Maria ou 123.456.789"
+          [value]="termo()"
+          (input)="aoDigitar($event)"
+        />
+        @if (termo()) {
+          <button class="botao" type="button" (click)="limparBusca()">Limpar</button>
+        }
+      </div>
+    </div>
+
+    <div class="resultado" [attr.aria-busy]="carregando()" aria-live="polite">
+      @if (carregando()) {
+        <p class="estado">Carregando clientes…</p>
+      } @else if (erro(); as mensagem) {
+        <div class="estado" role="alert">
+          <strong>Não foi possível carregar os clientes.</strong>
+          <span>{{ mensagem }}</span>
+          <button class="botao" type="button" (click)="carregar()">Tentar novamente</button>
+        </div>
+      } @else if (clientes().length === 0) {
+        <div class="estado">
+          @if (termo().trim()) {
+            <strong>Nenhum cliente encontrado para "{{ termo().trim() }}".</strong>
+            <span>Confira o nome ou o documento digitado.</span>
+          } @else {
+            <strong>Nenhum cliente cadastrado.</strong>
+            <span>Use "Novo cliente" para cadastrar o primeiro.</span>
+          }
+        </div>
+      } @else {
+        <p class="contagem">
+          {{ clientes().length }} {{ clientes().length === 1 ? 'cliente' : 'clientes' }}
+        </p>
+        <div class="tabela-rolagem">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Nome / Razão social</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">CPF / CNPJ</th>
+                <th scope="col">Telefone</th>
+                <th scope="col">Cidade / UF</th>
+                <th scope="col"><span class="visualmente-oculto">Ação</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cliente of clientes(); track cliente.id_cliente) {
+                <tr>
+                  <td data-rotulo="Nome" class="nome">{{ cliente.nome_razao_social }}</td>
+                  <td data-rotulo="Tipo">{{ rotuloTipoPessoa(cliente.tipo_pessoa) }}</td>
+                  <td data-rotulo="CPF/CNPJ" class="numerico">
+                    {{ formatarDocumento(cliente.cpf_cnpj, cliente.tipo_pessoa) }}
+                  </td>
+                  <td data-rotulo="Telefone" class="numerico">{{ formatarTelefone(cliente.telefone) }}</td>
+                  <td data-rotulo="Cidade/UF">{{ cliente.cidade }} / {{ cliente.uf }}</td>
+                  <td class="acao">
+                    <a
+                      class="botao"
+                      [routerLink]="['/clientes', cliente.id_cliente]"
+                      [attr.aria-label]="'Ver cliente ' + cliente.nome_razao_social"
+                      >Ver</a
+                    >
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </div>
+</section>

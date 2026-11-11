@@ -1,0 +1,43 @@
+SISTEMA DE ASSISTENCIA TECNICA - BANCO DE DADOS (MySQL 8.0.16 ou superior)
+
+CONTEUDO
+  criar_tabelas.ps1        Verifica e cria as tabelas (script principal)
+  esquema_esperado.json    Esquema esperado, gerado a partir do MER (usado na verificacao)
+  sql/01_...sql a 17_...   Um arquivo CREATE TABLE por tabela, na ordem das dependencias
+  migracoes/               Alteracoes incrementais; as ainda nao executadas no banco principal estao
+                           listadas em migracoes/pendentes.json
+
+SITUACAO (09/11/2026 17:02): as migracoes 20261109_01..04 foram EXECUTADAS no banco principal, com autorizacao.
+sql/ e esquema_esperado.json descrevem o estado atual do banco principal (17 tabelas). A tabela auxiliar
+solicitacao_status_backup (valores antigos de solicitacao.status) aparece como "nao prevista" na verificacao.
+Modelo de referencia: documentacao/mer/MER_Assistencia_Tecnica_v1.5.md (v1.4 preservada em documentacao/mer/historico).
+Cada migracao tem guarda de pre-condicao: fora de ordem ou repetida, para sem alterar nada. Nunca usar mysql --force.
+
+COMO USAR (PowerShell, dentro da pasta "banco")
+  1) Liberar os arquivos baixados (uma vez):
+       Get-ChildItem -Recurse | Unblock-File
+  2) Somente verificar (nao cria nada):
+       powershell -ExecutionPolicy Bypass -File .\criar_tabelas.ps1 -SomenteVerificar
+  3) Criar as tabelas que faltam (pergunta S/N antes):
+       powershell -ExecutionPolicy Bypass -File .\criar_tabelas.ps1
+
+  Se o mysql.exe nao estiver no PATH, acrescente:
+       -MysqlExe "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
+  Se o login-path tiver outro nome, acrescente:  -LoginPath nome_do_login_path
+
+GARANTIAS
+  - A senha nao fica em nenhum arquivo: vem do login-path (mysql_config_editor).
+  - O script nao cria nem recria o banco.
+  - Nao executa DROP, ALTER, TRUNCATE nem DELETE.
+  - Tabelas existentes so sao comparadas e relatadas; nunca modificadas.
+  - Cada execucao grava um relatorio na pasta "relatorios".
+
+DECISOES ADOTADAS (ajustaveis antes de rodar)
+  - Nomes de tabelas e colunas em minusculas, sem acentos.
+  - IDs INT AUTO_INCREMENT; valores DECIMAL(10,2); datas DATETIME; utf8mb4; FKs com ON DELETE/UPDATE RESTRICT.
+  - Dominios por ENUM (status, perfis, tipos) e, em cliente.tipo_pessoa, VARCHAR + CHECK. Valores definidos no MER v1.5.
+  - Uma unica OS ativa por equipamento: garantida pela aplicacao (bloqueio FOR UPDATE na abertura da OS).
+    (A coluna tecnica id_item_ativo citada em versoes anteriores deste arquivo NAO existe nos scripts nem no banco.)
+  - cliente.cpf_cnpj (somente digitos, 11 ou 14 conforme o tipo) e cliente.cep (8 digitos): validados por CHECK.
+  - orcamento.valor_total e armazenado; a consistencia com a soma dos itens fica na aplicacao.
+  - O tecnico da OS ter perfil TECNICO e validado pela aplicacao, nao pelo banco.

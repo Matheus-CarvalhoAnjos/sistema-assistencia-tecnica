@@ -1,0 +1,161 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-11-10T00:00:00.000Z" agent="Claude Code" version="24.7.17" type="device">
+  <diagram id="mer-assistencia-v15" name="MER Assistência Técnica v1.5">
+    <mxGraphModel dx="2400" dy="2100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="2100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="MER — SISTEMA DE ASSISTÊNCIA TÉCNICA | VERSÃO 1.5 (17 ENTIDADES)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="2200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="&lt;b&gt;USUARIO&lt;/b&gt;&lt;hr/&gt;id_usuario &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;nome [Obrigatório]&lt;br/&gt;email [UNIQUE; obrigatório]&lt;br/&gt;senha_hash [Obrigatório]&lt;br/&gt;perfil [Domínio controlado]&lt;br/&gt;ativo [Obrigatório]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="300" height="189" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="&lt;b&gt;CLIENTE&lt;/b&gt;&lt;hr/&gt;id_cliente &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;tipo_pessoa [Obrigatório]&lt;br/&gt;nome_razao_social [Obrigatório]&lt;br/&gt;cpf_cnpj [UNIQUE; obrigatório]&lt;br/&gt;telefone [Conforme cadastro]&lt;br/&gt;email [Opcional]&lt;br/&gt;cep, logradouro, numero, complemento, bairro, cidade, uf [Conforme cadastro]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="390" y="90" width="300" height="213" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;b&gt;SOLICITACAO&lt;/b&gt;&lt;hr/&gt;id_solicitacao &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_cliente [FK → CLIENTE]&lt;br/&gt;id_atendente [FK → USUARIO]&lt;br/&gt;data_abertura [Obrigatório]&lt;br/&gt;descricao_inicial [NOT NULL]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="740" y="90" width="300" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;b&gt;ITEM_SOLICITACAO&lt;/b&gt;&lt;hr/&gt;id_item &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_solicitacao [FK → SOLICITACAO]&lt;br/&gt;tipo_equipamento [Obrigatório]&lt;br/&gt;marca [Texto]&lt;br/&gt;modelo [Texto]&lt;br/&gt;numero_serie [Opcional]&lt;br/&gt;estado_fisico [Obrigatório]&lt;br/&gt;observacoes [Opcional]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="90" width="300" height="261" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="&lt;b&gt;ACESSORIO&lt;/b&gt;&lt;hr/&gt;id_acessorio &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;descricao [Obrigatório]&lt;br/&gt;preco_atual [Opcional]&lt;br/&gt;ativo [Obrigatório]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="90" width="300" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="&lt;b&gt;ACESSORIO_RECEBIDO&lt;/b&gt;&lt;hr/&gt;id_acessorio_recebido &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_item [FK → ITEM_SOLICITACAO]&lt;br/&gt;id_acessorio [FK → ACESSORIO]&lt;br/&gt;quantidade [INT; CHECK &amp;gt; 0]&lt;br/&gt;observacoes [Opcional]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="1790" y="90" width="300" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="&lt;b&gt;ORDEM_SERVICO&lt;/b&gt;&lt;hr/&gt;id_os &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_item [FK → ITEM_SOLICITACAO; NÃO UNIQUE]&lt;br/&gt;garantia_status [PENDENTE, SIM, NAO]&lt;br/&gt;id_tecnico [FK → USUARIO; NULL permitido]&lt;br/&gt;data_abertura [Obrigatório]&lt;br/&gt;status [Domínio controlado]&lt;br/&gt;data_encerramento [Opcional]&lt;br/&gt;tipo_encerramento [IMPOSSIBILIDADE_TECNICA / DESISTENCIA_CLIENTE / ORCAMENTO_REJEITADO]&lt;br/&gt;motivo_encerramento [Obrigatório no encerramento sem reparo]&lt;br/&gt;id_usuario_encerramento [FK → USUARIO; obrigatório ao encerrar]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="40" y="620" width="300" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="&lt;b&gt;ORCAMENTO&lt;/b&gt;&lt;hr/&gt;id_orcamento &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_os [FK → ORDEM_SERVICO]&lt;br/&gt;id_tecnico [FK → USUARIO]&lt;br/&gt;data_emissao [Obrigatório]&lt;br/&gt;data_validade [Obrigatório]&lt;br/&gt;valor_total [Obrigatório; armazenado]&lt;br/&gt;status [Domínio controlado]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="390" y="620" width="300" height="213" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="&lt;b&gt;ITEM_ORCAMENTO&lt;/b&gt;&lt;hr/&gt;id_item_orcamento &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_orcamento [FK → ORCAMENTO]&lt;br/&gt;tipo_item [Domínio controlado]&lt;br/&gt;descricao [Obrigatório]&lt;br/&gt;quantidade [Obrigatório]&lt;br/&gt;valor_unitario [Obrigatório]&lt;br/&gt;subtotal [Derivado]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="740" y="620" width="300" height="213" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="&lt;b&gt;RESPOSTA_ORCAMENTO&lt;/b&gt;&lt;hr/&gt;id_resposta &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_orcamento &lt;b&gt;[FK + UNIQUE]&lt;/b&gt;&lt;br/&gt;id_usuario [FK → USUARIO]&lt;br/&gt;decisao [Domínio controlado]&lt;br/&gt;data_resposta [Obrigatório]&lt;br/&gt;observacoes [Opcional]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="620" width="300" height="189" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="&lt;b&gt;EXECUCAO&lt;/b&gt;&lt;hr/&gt;id_execucao &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_os &lt;b&gt;[FK + UNIQUE → ORDEM_SERVICO]&lt;/b&gt;&lt;br/&gt;id_tecnico [FK → USUARIO]&lt;br/&gt;diagnostico [Obrigatório na criação]&lt;br/&gt;laudo_tecnico [Opcional]&lt;br/&gt;resultado [Opcional]&lt;br/&gt;data_inicio [Obrigatório na criação]&lt;br/&gt;data_conclusao [Opcional]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="620" width="300" height="237" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="&lt;b&gt;PAGAMENTO&lt;/b&gt;&lt;hr/&gt;id_pagamento &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_os [FK → ORDEM_SERVICO]&lt;br/&gt;data_pagamento [NULL enquanto PENDENTE]&lt;br/&gt;valor [Obrigatório; &gt; 0; até o saldo]&lt;br/&gt;forma_pagamento [NULL enquanto PENDENTE]&lt;br/&gt;status [ENUM controlado]&lt;br/&gt;data_reembolso [Opcional; resumo — ver REEMBOLSO]&lt;br/&gt;id_usuario_reembolso [FK → USUARIO; opcional; resumo — ver REEMBOLSO]&lt;br/&gt;justificativa_reembolso [Obrigatória no reembolso; resumo — ver REEMBOLSO]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="1790" y="620" width="300" height="261" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="&lt;b&gt;EXPEDICAO&lt;/b&gt;&lt;hr/&gt;id_expedicao &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_os &lt;b&gt;[FK + UNIQUE → ORDEM_SERVICO]&lt;/b&gt;&lt;br/&gt;id_usuario [FK → USUARIO]&lt;br/&gt;forma_entrega [ENUM: RETIRADA, ENVIO]&lt;br/&gt;data_envio [Opcional]&lt;br/&gt;codigo_rastreio [Opcional]&lt;br/&gt;status [Domínio controlado]&lt;br/&gt;data_entrega [Opcional]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="740" y="1160" width="300" height="237" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="&lt;b&gt;HISTORICO_OS&lt;/b&gt;&lt;hr/&gt;id_historico &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_os [FK → ORDEM_SERVICO]&lt;br/&gt;id_usuario [FK → USUARIO; NULL permitido]&lt;br/&gt;tipo_evento [Domínio controlado: 11 valores, inclui ACESSORIO e ABATIMENTO]&lt;br/&gt;descricao [Obrigatório]&lt;br/&gt;data_evento [Obrigatório]&lt;br/&gt;dados_anteriores [JSON opcional]&lt;br/&gt;dados_novos [JSON opcional]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1F4E79;fillColor=#FFFFFF;separatorColor=#1F4E79;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="1160" width="300" height="237" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="3" target="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="4" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="1:N ao longo do tempo" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="5" target="8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="1:N; 0..1 técnico atual" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="8" target="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="9" target="10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="1:0..1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="9" target="11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="1:0..1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="8" target="12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="8" target="13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="1:0..1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="8" target="14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="6" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="5" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="8" target="15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="1:N; usuário opcional" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" value="1:N; reembolso" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#607D8B;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note1" value="&lt;b&gt;Decisões v1.4 e v1.5&lt;/b&gt;&lt;br/&gt;• Histórico imutável pela interface&lt;br/&gt;• Garantia por OS; pagamentos parciais e saldo calculado&lt;br/&gt;• Uma EXPEDICAO por OS&lt;br/&gt;• Marca/modelo como texto&lt;br/&gt;• OS pode se repetir por equipamento&lt;br/&gt;• Acessórios repetidos em linhas distintas&lt;br/&gt;• (v1.5) Total devido = orçamento aprovado − abatimentos&lt;br/&gt;• (v1.5) Total pago = confirmados − reembolsos&lt;br/&gt;• (v1.5) Avaliação imutável: correção gera revisão" style="shape=note;whiteSpace=wrap;html=1;size=18;align=left;verticalAlign=top;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1560" width="500" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="note2" value="&lt;b&gt;Permissões e regras resumidas&lt;/b&gt;&lt;br/&gt;• Diagnóstico: técnico atualmente atribuído&lt;br/&gt;• Garantia: ATENDENTE (regra vigente em 10/11/2026)&lt;br/&gt;• Resposta de orçamento: ADMINISTRADOR/ATENDENTE&lt;br/&gt;• Pagamento/reembolso/abatimento/avaliação: ADMINISTRADOR/ATENDENTE&lt;br/&gt;• Expedição: ADMINISTRADOR/ATENDENTE&lt;br/&gt;• TECNICO não vê dados financeiros&lt;br/&gt;• HISTORICO_OS: sem edição/exclusão pela interface" style="shape=note;whiteSpace=wrap;html=1;size=18;align=left;verticalAlign=top;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1560" width="520" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="&lt;b&gt;ABATIMENTO&lt;/b&gt; &lt;i&gt;(v1.5)&lt;/i&gt;&lt;hr/&gt;id_abatimento &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_os [FK → ORDEM_SERVICO]&lt;br/&gt;id_orcamento [FK → ORCAMENTO (aprovado)]&lt;br/&gt;valor [DECIMAL(10,2); CHECK &gt; 0]&lt;br/&gt;motivo [Obrigatório]&lt;br/&gt;status [ENUM: APROVADO, CANCELADO]&lt;br/&gt;id_usuario_registro [FK → USUARIO]&lt;br/&gt;data_registro [Obrigatório]&lt;br/&gt;id_usuario_cancelamento [FK → USUARIO; NULL permitido]&lt;br/&gt;data_cancelamento [NULL permitido]&lt;br/&gt;justificativa_cancelamento [Obrigatória no cancelamento]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1E8A60;fillColor=#E2F4EC;separatorColor=#1E8A60;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="390" y="1160" width="300" height="309" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="&lt;b&gt;AVALIACAO_REEMBOLSO&lt;/b&gt; &lt;i&gt;(v1.5)&lt;/i&gt;&lt;hr/&gt;id_avaliacao &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_os [FK → ORDEM_SERVICO]&lt;br/&gt;id_avaliacao_revisada [FK → AVALIACAO_REEMBOLSO; UNIQUE; NULL]&lt;br/&gt;id_os_original [Coluna gerada; UNIQUE]&lt;br/&gt;valor_definido [DECIMAL(10,2); CHECK ≥ 0]&lt;br/&gt;justificativa [Obrigatório]&lt;br/&gt;motivo_revisao [Obrigatório nas revisões]&lt;br/&gt;id_usuario [FK → USUARIO]&lt;br/&gt;data_avaliacao [Obrigatório]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1E8A60;fillColor=#E2F4EC;separatorColor=#1E8A60;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="1160" width="300" height="261" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="&lt;b&gt;REEMBOLSO&lt;/b&gt; &lt;i&gt;(v1.5)&lt;/i&gt;&lt;hr/&gt;id_reembolso &lt;b&gt;[PK]&lt;/b&gt;&lt;br/&gt;id_pagamento [FK → PAGAMENTO]&lt;br/&gt;id_avaliacao [FK → AVALIACAO_REEMBOLSO; NULL permitido]&lt;br/&gt;valor [DECIMAL(10,2); CHECK &gt; 0]&lt;br/&gt;justificativa [Obrigatório]&lt;br/&gt;id_usuario [FK → USUARIO]&lt;br/&gt;data_reembolso [Obrigatório]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=6;spacingTop=7;fontSize=11;strokeColor=#1E8A60;fillColor=#E2F4EC;separatorColor=#1E8A60;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1790" y="1160" width="300" height="213" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" value="1:N (1 original + revisões)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="8" target="17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" value="1:0..1 revisão" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.25;entryX=1;entryY=0.6;" edge="1" parent="1" source="17" target="17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="13" target="18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" value="1:N opcional" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="17" target="18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e25" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="8" target="16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e27" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="9" target="16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e28" value="1:N (registro)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e29" value="1:N opcional (cancelamento)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERone;endFill=1;strokeColor=#1E8A60;fontSize=10;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="2" target="16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="legenda15" value="&lt;b&gt;Legenda v1.5&lt;/b&gt;&lt;br/&gt;Entidades e relacionamentos em verde: acrescentados na versão 1.5 (09/11/2026).&lt;br/&gt;Fonte: documentacao/mer/MER_Assistencia_Tecnica_v1.5.md, seções 4.15–4.17 e 5. As 14 entidades da v1.4 foram mantidas." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#1E8A60;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="1560" width="900" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

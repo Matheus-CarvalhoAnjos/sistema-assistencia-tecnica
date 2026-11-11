@@ -1,0 +1,1080 @@
+{
+  "banco": "assistencia_tecnica",
+  "tabelas": [
+    {
+      "nome": "usuario",
+      "arquivo": "01_usuario.sql",
+      "colunas": [
+        {
+          "nome": "id_usuario",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "nome",
+          "tipo": "varchar(100)",
+          "nulo": false
+        },
+        {
+          "nome": "email",
+          "tipo": "varchar(150)",
+          "nulo": false
+        },
+        {
+          "nome": "senha_hash",
+          "tipo": "varchar(255)",
+          "nulo": false
+        },
+        {
+          "nome": "perfil",
+          "tipo": "enum('ADMINISTRADOR','ATENDENTE','TECNICO')",
+          "nulo": false
+        },
+        {
+          "nome": "ativo",
+          "tipo": "tinyint(1)",
+          "nulo": false
+        }
+      ],
+      "pk": [
+        "id_usuario"
+      ],
+      "unicas": [
+        "email"
+      ],
+      "fks": [],
+      "checks": []
+    },
+    {
+      "nome": "cliente",
+      "arquivo": "02_cliente.sql",
+      "colunas": [
+        {
+          "nome": "id_cliente",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "tipo_pessoa",
+          "tipo": "varchar(10)",
+          "nulo": false
+        },
+        {
+          "nome": "nome_razao_social",
+          "tipo": "varchar(200)",
+          "nulo": false
+        },
+        {
+          "nome": "cpf_cnpj",
+          "tipo": "varchar(14)",
+          "nulo": false
+        },
+        {
+          "nome": "telefone",
+          "tipo": "varchar(20)",
+          "nulo": false
+        },
+        {
+          "nome": "email",
+          "tipo": "varchar(150)",
+          "nulo": true
+        },
+        {
+          "nome": "cep",
+          "tipo": "varchar(8)",
+          "nulo": false
+        },
+        {
+          "nome": "logradouro",
+          "tipo": "varchar(150)",
+          "nulo": false
+        },
+        {
+          "nome": "numero",
+          "tipo": "varchar(10)",
+          "nulo": false
+        },
+        {
+          "nome": "complemento",
+          "tipo": "varchar(100)",
+          "nulo": true
+        },
+        {
+          "nome": "bairro",
+          "tipo": "varchar(100)",
+          "nulo": false
+        },
+        {
+          "nome": "cidade",
+          "tipo": "varchar(100)",
+          "nulo": false
+        },
+        {
+          "nome": "uf",
+          "tipo": "char(2)",
+          "nulo": false
+        }
+      ],
+      "pk": [
+        "id_cliente"
+      ],
+      "unicas": [
+        "cpf_cnpj"
+      ],
+      "fks": [],
+      "checks": [
+        "ck_cliente_cep",
+        "ck_cliente_cpf_cnpj",
+        "ck_cliente_tipo_pessoa"
+      ]
+    },
+    {
+      "nome": "acessorio",
+      "arquivo": "03_acessorio.sql",
+      "colunas": [
+        {
+          "nome": "id_acessorio",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "descricao",
+          "tipo": "varchar(150)",
+          "nulo": false
+        },
+        {
+          "nome": "preco_atual",
+          "tipo": "decimal(10,2)",
+          "nulo": true
+        },
+        {
+          "nome": "ativo",
+          "tipo": "tinyint(1)",
+          "nulo": false
+        }
+      ],
+      "pk": [
+        "id_acessorio"
+      ],
+      "unicas": [],
+      "fks": [],
+      "checks": [
+        "chk_acessorio_preco"
+      ]
+    },
+    {
+      "nome": "solicitacao",
+      "arquivo": "04_solicitacao.sql",
+      "colunas": [
+        {
+          "nome": "id_solicitacao",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_cliente",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_atendente",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "data_abertura",
+          "tipo": "datetime",
+          "nulo": false
+        },
+        {
+          "nome": "descricao_inicial",
+          "tipo": "text",
+          "nulo": false
+        }
+      ],
+      "pk": [
+        "id_solicitacao"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_atendente",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        },
+        {
+          "coluna": "id_cliente",
+          "ref_tabela": "cliente",
+          "ref_coluna": "id_cliente"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "nome": "item_solicitacao",
+      "arquivo": "05_item_solicitacao.sql",
+      "colunas": [
+        {
+          "nome": "id_item",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_solicitacao",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "tipo_equipamento",
+          "tipo": "varchar(100)",
+          "nulo": false
+        },
+        {
+          "nome": "marca",
+          "tipo": "varchar(100)",
+          "nulo": false
+        },
+        {
+          "nome": "modelo",
+          "tipo": "varchar(100)",
+          "nulo": false
+        },
+        {
+          "nome": "numero_serie",
+          "tipo": "varchar(100)",
+          "nulo": true
+        },
+        {
+          "nome": "estado_fisico",
+          "tipo": "text",
+          "nulo": false
+        },
+        {
+          "nome": "observacoes",
+          "tipo": "text",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_item"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_solicitacao",
+          "ref_tabela": "solicitacao",
+          "ref_coluna": "id_solicitacao"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "nome": "acessorio_recebido",
+      "arquivo": "06_acessorio_recebido.sql",
+      "colunas": [
+        {
+          "nome": "id_acessorio_recebido",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_item",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_acessorio",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "quantidade",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "observacoes",
+          "tipo": "text",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_acessorio_recebido"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_acessorio",
+          "ref_tabela": "acessorio",
+          "ref_coluna": "id_acessorio"
+        },
+        {
+          "coluna": "id_item",
+          "ref_tabela": "item_solicitacao",
+          "ref_coluna": "id_item"
+        }
+      ],
+      "checks": [
+        "chk_acessorio_recebido_quantidade"
+      ]
+    },
+    {
+      "nome": "ordem_servico",
+      "arquivo": "07_ordem_servico.sql",
+      "colunas": [
+        {
+          "nome": "id_os",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_item",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_tecnico",
+          "tipo": "int",
+          "nulo": true
+        },
+        {
+          "nome": "data_abertura",
+          "tipo": "datetime",
+          "nulo": false
+        },
+        {
+          "nome": "status",
+          "tipo": "enum('RECEBIDA','EM_ANALISE','AGUARDANDO_APROVACAO','EM_REPARO','CONCLUIDA','AGUARDANDO_EXPEDICAO','FINALIZADA','ENCERRADA_SEM_REPARO')",
+          "nulo": false
+        },
+        {
+          "nome": "data_encerramento",
+          "tipo": "datetime",
+          "nulo": true
+        },
+        {
+          "nome": "motivo_encerramento",
+          "tipo": "text",
+          "nulo": true
+        },
+        {
+          "nome": "garantia_status",
+          "tipo": "enum('PENDENTE','SIM','NAO')",
+          "nulo": false
+        },
+        {
+          "nome": "tipo_encerramento",
+          "tipo": "enum('IMPOSSIBILIDADE_TECNICA','DESISTENCIA_CLIENTE','ORCAMENTO_REJEITADO')",
+          "nulo": true
+        },
+        {
+          "nome": "id_usuario_encerramento",
+          "tipo": "int",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_os"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_item",
+          "ref_tabela": "item_solicitacao",
+          "ref_coluna": "id_item"
+        },
+        {
+          "coluna": "id_tecnico",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        },
+        {
+          "coluna": "id_usuario_encerramento",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "nome": "orcamento",
+      "arquivo": "08_orcamento.sql",
+      "colunas": [
+        {
+          "nome": "id_orcamento",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_os",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_tecnico",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "data_emissao",
+          "tipo": "datetime",
+          "nulo": false
+        },
+        {
+          "nome": "data_validade",
+          "tipo": "datetime",
+          "nulo": false
+        },
+        {
+          "nome": "valor_total",
+          "tipo": "decimal(10,2)",
+          "nulo": false
+        },
+        {
+          "nome": "status",
+          "tipo": "enum('PENDENTE','APROVADO','REJEITADO','VENCIDO','CANCELADO')",
+          "nulo": false
+        }
+      ],
+      "pk": [
+        "id_orcamento"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_os",
+          "ref_tabela": "ordem_servico",
+          "ref_coluna": "id_os"
+        },
+        {
+          "coluna": "id_tecnico",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": [
+        "chk_orcamento_validade",
+        "chk_orcamento_valor"
+      ]
+    },
+    {
+      "nome": "item_orcamento",
+      "arquivo": "09_item_orcamento.sql",
+      "colunas": [
+        {
+          "nome": "id_item_orcamento",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_orcamento",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "tipo_item",
+          "tipo": "enum('PECA','SERVICO')",
+          "nulo": false
+        },
+        {
+          "nome": "descricao",
+          "tipo": "varchar(255)",
+          "nulo": false
+        },
+        {
+          "nome": "quantidade",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "valor_unitario",
+          "tipo": "decimal(10,2)",
+          "nulo": false
+        }
+      ],
+      "pk": [
+        "id_item_orcamento"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_orcamento",
+          "ref_tabela": "orcamento",
+          "ref_coluna": "id_orcamento"
+        }
+      ],
+      "checks": [
+        "chk_item_orcamento_quantidade",
+        "chk_item_orcamento_valor"
+      ]
+    },
+    {
+      "nome": "resposta_orcamento",
+      "arquivo": "10_resposta_orcamento.sql",
+      "colunas": [
+        {
+          "nome": "id_resposta",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_orcamento",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_usuario",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "decisao",
+          "tipo": "enum('APROVADO','REJEITADO')",
+          "nulo": false
+        },
+        {
+          "nome": "data_resposta",
+          "tipo": "datetime",
+          "nulo": false
+        },
+        {
+          "nome": "observacoes",
+          "tipo": "text",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_resposta"
+      ],
+      "unicas": [
+        "id_orcamento"
+      ],
+      "fks": [
+        {
+          "coluna": "id_orcamento",
+          "ref_tabela": "orcamento",
+          "ref_coluna": "id_orcamento"
+        },
+        {
+          "coluna": "id_usuario",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "nome": "execucao",
+      "arquivo": "11_execucao.sql",
+      "colunas": [
+        {
+          "nome": "id_execucao",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_os",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_tecnico",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "diagnostico",
+          "tipo": "text",
+          "nulo": false
+        },
+        {
+          "nome": "laudo_tecnico",
+          "tipo": "text",
+          "nulo": true
+        },
+        {
+          "nome": "resultado",
+          "tipo": "text",
+          "nulo": true
+        },
+        {
+          "nome": "data_inicio",
+          "tipo": "datetime",
+          "nulo": false
+        },
+        {
+          "nome": "data_conclusao",
+          "tipo": "datetime",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_execucao"
+      ],
+      "unicas": [
+        "id_os"
+      ],
+      "fks": [
+        {
+          "coluna": "id_os",
+          "ref_tabela": "ordem_servico",
+          "ref_coluna": "id_os"
+        },
+        {
+          "coluna": "id_tecnico",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "nome": "pagamento",
+      "arquivo": "12_pagamento.sql",
+      "colunas": [
+        {
+          "nome": "id_pagamento",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_os",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "data_pagamento",
+          "tipo": "datetime",
+          "nulo": true
+        },
+        {
+          "nome": "valor",
+          "tipo": "decimal(10,2)",
+          "nulo": false
+        },
+        {
+          "nome": "forma_pagamento",
+          "tipo": "varchar(50)",
+          "nulo": true
+        },
+        {
+          "nome": "status",
+          "tipo": "enum('PENDENTE','CONFIRMADO','CANCELADO','REEMBOLSADO')",
+          "nulo": false
+        },
+        {
+          "nome": "data_reembolso",
+          "tipo": "datetime",
+          "nulo": true
+        },
+        {
+          "nome": "id_usuario_reembolso",
+          "tipo": "int",
+          "nulo": true
+        },
+        {
+          "nome": "justificativa_reembolso",
+          "tipo": "text",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_pagamento"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_os",
+          "ref_tabela": "ordem_servico",
+          "ref_coluna": "id_os"
+        },
+        {
+          "coluna": "id_usuario_reembolso",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": [
+        "chk_pagamento_valor_positivo"
+      ]
+    },
+    {
+      "nome": "expedicao",
+      "arquivo": "13_expedicao.sql",
+      "colunas": [
+        {
+          "nome": "id_expedicao",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_os",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_usuario",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "data_envio",
+          "tipo": "datetime",
+          "nulo": true
+        },
+        {
+          "nome": "forma_entrega",
+          "tipo": "enum('RETIRADA','ENVIO')",
+          "nulo": true
+        },
+        {
+          "nome": "codigo_rastreio",
+          "tipo": "varchar(100)",
+          "nulo": true
+        },
+        {
+          "nome": "status",
+          "tipo": "enum('PENDENTE','EM_TRANSITO','AGUARDANDO_RETIRADA','ENTREGUE','RETIRADO')",
+          "nulo": false
+        },
+        {
+          "nome": "data_entrega",
+          "tipo": "datetime",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_expedicao"
+      ],
+      "unicas": [
+        "id_os"
+      ],
+      "fks": [
+        {
+          "coluna": "id_os",
+          "ref_tabela": "ordem_servico",
+          "ref_coluna": "id_os"
+        },
+        {
+          "coluna": "id_usuario",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "nome": "historico_os",
+      "arquivo": "14_historico_os.sql",
+      "colunas": [
+        {
+          "nome": "id_historico",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_os",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_usuario",
+          "tipo": "int",
+          "nulo": true
+        },
+        {
+          "nome": "tipo_evento",
+          "tipo": "enum('CRIACAO','ATRIBUICAO_TECNICO','DIAGNOSTICO','GARANTIA','ORCAMENTO','REPARO','ENCERRAMENTO','PAGAMENTO','EXPEDICAO','ACESSORIO','ABATIMENTO')",
+          "nulo": false
+        },
+        {
+          "nome": "descricao",
+          "tipo": "text",
+          "nulo": false
+        },
+        {
+          "nome": "data_evento",
+          "tipo": "datetime",
+          "nulo": false
+        },
+        {
+          "nome": "dados_anteriores",
+          "tipo": "json",
+          "nulo": true
+        },
+        {
+          "nome": "dados_novos",
+          "tipo": "json",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_historico"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_os",
+          "ref_tabela": "ordem_servico",
+          "ref_coluna": "id_os"
+        },
+        {
+          "coluna": "id_usuario",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "nome": "avaliacao_reembolso",
+      "arquivo": "15_avaliacao_reembolso.sql",
+      "colunas": [
+        {
+          "nome": "id_avaliacao",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_os",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_avaliacao_revisada",
+          "tipo": "int",
+          "nulo": true
+        },
+        {
+          "nome": "id_os_original",
+          "tipo": "int",
+          "nulo": true
+        },
+        {
+          "nome": "valor_definido",
+          "tipo": "decimal(10,2)",
+          "nulo": false
+        },
+        {
+          "nome": "justificativa",
+          "tipo": "text",
+          "nulo": false
+        },
+        {
+          "nome": "motivo_revisao",
+          "tipo": "text",
+          "nulo": true
+        },
+        {
+          "nome": "id_usuario",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "data_avaliacao",
+          "tipo": "datetime",
+          "nulo": false
+        }
+      ],
+      "pk": [
+        "id_avaliacao"
+      ],
+      "unicas": [
+        "id_avaliacao_revisada",
+        "id_os_original"
+      ],
+      "fks": [
+        {
+          "coluna": "id_avaliacao_revisada",
+          "ref_tabela": "avaliacao_reembolso",
+          "ref_coluna": "id_avaliacao"
+        },
+        {
+          "coluna": "id_os",
+          "ref_tabela": "ordem_servico",
+          "ref_coluna": "id_os"
+        },
+        {
+          "coluna": "id_usuario",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": [
+        "chk_avaliacao_valor"
+      ]
+    },
+    {
+      "nome": "reembolso",
+      "arquivo": "16_reembolso.sql",
+      "colunas": [
+        {
+          "nome": "id_reembolso",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_pagamento",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_avaliacao",
+          "tipo": "int",
+          "nulo": true
+        },
+        {
+          "nome": "valor",
+          "tipo": "decimal(10,2)",
+          "nulo": false
+        },
+        {
+          "nome": "justificativa",
+          "tipo": "text",
+          "nulo": false
+        },
+        {
+          "nome": "id_usuario",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "data_reembolso",
+          "tipo": "datetime",
+          "nulo": false
+        }
+      ],
+      "pk": [
+        "id_reembolso"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_avaliacao",
+          "ref_tabela": "avaliacao_reembolso",
+          "ref_coluna": "id_avaliacao"
+        },
+        {
+          "coluna": "id_pagamento",
+          "ref_tabela": "pagamento",
+          "ref_coluna": "id_pagamento"
+        },
+        {
+          "coluna": "id_usuario",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": [
+        "chk_reembolso_valor"
+      ]
+    },
+    {
+      "nome": "abatimento",
+      "arquivo": "17_abatimento.sql",
+      "colunas": [
+        {
+          "nome": "id_abatimento",
+          "tipo": "int",
+          "nulo": false,
+          "auto": true
+        },
+        {
+          "nome": "id_os",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "id_orcamento",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "valor",
+          "tipo": "decimal(10,2)",
+          "nulo": false
+        },
+        {
+          "nome": "motivo",
+          "tipo": "text",
+          "nulo": false
+        },
+        {
+          "nome": "status",
+          "tipo": "enum('APROVADO','CANCELADO')",
+          "nulo": false
+        },
+        {
+          "nome": "id_usuario_registro",
+          "tipo": "int",
+          "nulo": false
+        },
+        {
+          "nome": "data_registro",
+          "tipo": "datetime",
+          "nulo": false
+        },
+        {
+          "nome": "id_usuario_cancelamento",
+          "tipo": "int",
+          "nulo": true
+        },
+        {
+          "nome": "data_cancelamento",
+          "tipo": "datetime",
+          "nulo": true
+        },
+        {
+          "nome": "justificativa_cancelamento",
+          "tipo": "text",
+          "nulo": true
+        }
+      ],
+      "pk": [
+        "id_abatimento"
+      ],
+      "unicas": [],
+      "fks": [
+        {
+          "coluna": "id_orcamento",
+          "ref_tabela": "orcamento",
+          "ref_coluna": "id_orcamento"
+        },
+        {
+          "coluna": "id_os",
+          "ref_tabela": "ordem_servico",
+          "ref_coluna": "id_os"
+        },
+        {
+          "coluna": "id_usuario_cancelamento",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        },
+        {
+          "coluna": "id_usuario_registro",
+          "ref_tabela": "usuario",
+          "ref_coluna": "id_usuario"
+        }
+      ],
+      "checks": [
+        "chk_abatimento_valor"
+      ]
+    }
+  ]
+}

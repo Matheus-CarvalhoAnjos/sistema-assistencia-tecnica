@@ -1,0 +1,134 @@
+.busca {
+  display: grid;
+  gap: 6px;
+  max-width: 520px;
+  margin-bottom: 16px;
+}
+
+.busca label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.busca-campo {
+  display: flex;
+  gap: 8px;
+}
+
+.busca-campo input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line-default);
+  border-radius: 7px;
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+.contagem {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tabela-rolagem {
+  /* relative: contém o rótulo visualmente oculto (absolute) dentro da área com rolagem. */
+  position: relative;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-default);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  text-align: left;
+  white-space: nowrap;
+}
+
+td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line-subtle);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.nome {
+  font-weight: 600;
+}
+
+.numerico {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.acao {
+  text-align: right;
+}
+
+.acao .botao {
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Telas estreitas: cada cliente vira um cartão */
+@media (max-width: 720px) {
+  thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+
+  tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line-subtle);
+  }
+
+  td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    border: 0;
+  }
+
+  td[data-rotulo]::before {
+    color: var(--text-secondary);
+    font-size: 11px;
+    content: attr(data-rotulo);
+  }
+
+  .acao {
+    justify-content: flex-end;
+    padding-top: 8px;
+  }
+}

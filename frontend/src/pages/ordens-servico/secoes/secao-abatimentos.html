@@ -1,0 +1,105 @@
+@if (visivel()) {
+  <section class="painel" aria-labelledby="abatimentos-titulo">
+    <div class="cabecalho-secao">
+      <h2 id="abatimentos-titulo">Abatimentos</h2>
+      @if (podeOperar() && !registrando() && disponivel() > 0) {
+        <button class="botao botao-pequeno" type="button" (click)="abrir()">Registrar abatimento</button>
+      }
+    </div>
+    <p class="dica">O abatimento reduz o total devido sem alterar o orçamento aprovado. Não é reembolso: não devolve dinheiro pago.</p>
+    @switch (semValorParaAbatimento()) {
+      @case ('quitado') { <p class="dica" id="dica-abatimento-quitado">Saldo quitado: não há valor disponível para um novo abatimento.</p> }
+      @case ('reservado') { <p class="dica" id="dica-abatimento-reservado">O saldo restante está reservado por pagamentos pendentes de confirmação; não há valor disponível para abatimento.</p> }
+    }
+
+    @if (registrando()) {
+      <div class="formulario" role="group" aria-labelledby="novo-abatimento-titulo">
+        <h3 id="novo-abatimento-titulo">Novo abatimento</h3>
+        <div class="campo">
+          <label for="campo-valor-abatimento">Valor (R$) *</label>
+          <input id="campo-valor-abatimento" type="number" min="0.01" step="0.01" [max]="disponivel()"
+            [value]="valor()" (input)="valor.set($any($event.target).valueAsNumber)" aria-describedby="dica-valor-abatimento" />
+          <span class="dica" id="dica-valor-abatimento">
+            Disponível: {{ formatarMoeda(disponivel()) }} (total devido menos pagamentos confirmados e pendentes).
+          </span>
+        </div>
+        <div class="campo">
+          <label for="campo-motivo-abatimento">Motivo *</label>
+          <textarea id="campo-motivo-abatimento" [value]="motivo()" (input)="motivo.set($any($event.target).value)"></textarea>
+        </div>
+        @if (confirmando()) {
+          <div class="confirmacao" role="group" aria-labelledby="confirmar-abatimento">
+            <p id="confirmar-abatimento">
+              <strong>Registrar abatimento de {{ formatarMoeda(valor() ?? 0) }}?</strong>
+              O total devido diminui; o registro só pode ser cancelado, com justificativa.
+            </p>
+            <div class="botoes">
+              <button class="botao botao-primario" type="button" (click)="registrar()" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+                {{ enviando() ? 'Registrando…' : 'Confirmar abatimento' }}
+              </button>
+              <button class="botao" type="button" (click)="confirmando.set(false)" [disabled]="enviando()">Voltar</button>
+            </div>
+          </div>
+        } @else {
+          <div class="botoes">
+            <button class="botao botao-primario" type="button" (click)="continuar()">Continuar</button>
+            <button class="botao" type="button" (click)="registrando.set(false)">Cancelar</button>
+          </div>
+        }
+      </div>
+    }
+
+    @if (lista().length) {
+      <ol class="lista-registros formulario" aria-label="Abatimentos da OS">
+        @for (a of lista(); track a.id_abatimento) {
+          <li class="registro">
+            <div class="registro-topo">
+              <strong>Abatimento nº {{ a.id_abatimento }} · {{ formatarMoeda(a.valor) }}</strong>
+              <span class="etiqueta" [attr.data-tom]="a.status === 'APROVADO' ? 'verde' : 'neutro'">
+                {{ a.status === 'APROVADO' ? 'Aprovado' : 'Cancelado' }}
+              </span>
+            </div>
+            <span class="secundario">{{ formatarDataHora(a.data_registro) }}{{ a.nome_usuario_registro ? ' · ' + a.nome_usuario_registro : '' }}</span>
+            <p class="texto-longo">{{ a.motivo }}</p>
+            @if (a.status === 'CANCELADO') {
+              <span class="secundario">
+                Cancelado em {{ formatarDataHora(a.data_cancelamento ?? '') }}{{ a.nome_usuario_cancelamento ? ' por ' + a.nome_usuario_cancelamento : '' }}
+                · {{ a.justificativa_cancelamento }}
+              </span>
+            }
+
+            @if (a.status === 'APROVADO' && podeOperar()) {
+              @if (cancelando() === a.id_abatimento) {
+                <div class="confirmacao" role="group" [attr.aria-labelledby]="'cancelar-abatimento-' + a.id_abatimento">
+                  <p [id]="'cancelar-abatimento-' + a.id_abatimento">
+                    <strong>Cancelar o abatimento de {{ formatarMoeda(a.valor) }}?</strong> O total devido volta a subir; o registro é mantido.
+                  </p>
+                  <div class="campo">
+                    <label [for]="'justificativa-abatimento-' + a.id_abatimento">Justificativa *</label>
+                    <textarea [id]="'justificativa-abatimento-' + a.id_abatimento" [value]="justificativa()"
+                      (input)="justificativa.set($any($event.target).value)"></textarea>
+                  </div>
+                  <div class="botoes">
+                    <button class="botao botao-perigo" type="button" (click)="cancelar(a)" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+                      {{ enviando() ? 'Cancelando…' : 'Confirmar cancelamento' }}
+                    </button>
+                    <button class="botao" type="button" (click)="cancelando.set(null)" [disabled]="enviando()">Voltar</button>
+                  </div>
+                </div>
+              } @else {
+                <div class="botoes">
+                  <button class="botao botao-pequeno" type="button" (click)="pedirCancelamento(a)"
+                    [attr.aria-label]="'Cancelar abatimento nº ' + a.id_abatimento">Cancelar abatimento</button>
+                </div>
+              }
+            }
+          </li>
+        }
+      </ol>
+    } @else {
+      <p class="vazio">Nenhum abatimento registrado.</p>
+    }
+
+    <app-mensagem-acao [mensagem]="mensagem()" />
+  </section>
+}

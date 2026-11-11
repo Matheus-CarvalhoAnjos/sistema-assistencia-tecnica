@@ -1,0 +1,79 @@
+.formulario-usuario {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.formulario-usuario h2 {
+  margin: 0;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.filtros .campo {
+  flex: 0 1 200px;
+}
+
+.tabela-rolagem {
+  /* relative: o rótulo visualmente oculto (absolute) fica contido aqui e não alarga a página no celular. */
+  position: relative;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+caption.contagem {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line-subtle);
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.acoes-linha {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.acoes-linha .botao + .botao {
+  margin-left: 6px;
+}
+
+.confirmacao-linha {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  white-space: normal;
+}
+
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

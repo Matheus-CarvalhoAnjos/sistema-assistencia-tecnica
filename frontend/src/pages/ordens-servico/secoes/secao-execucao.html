@@ -1,0 +1,109 @@
+<section class="painel" aria-labelledby="execucao-titulo">
+  <div class="cabecalho-secao">
+    <h2 id="execucao-titulo">Execução técnica</h2>
+    @if (podeEditar() && !editando()) {
+      <button class="botao botao-pequeno" type="button" (click)="abrirEdicao()">Editar diagnóstico e laudo</button>
+    }
+  </div>
+
+  @if (execucao(); as e) {
+    @if (!editando()) {
+      <dl class="dados">
+        <div class="largo"><dt>Diagnóstico</dt><dd class="texto-longo">{{ e.diagnostico }}</dd></div>
+        <div><dt>Início da análise</dt><dd>{{ formatarDataHora(e.data_inicio) || '—' }}</dd></div>
+        <div><dt>Conclusão</dt><dd>{{ e.data_conclusao ? formatarDataHora(e.data_conclusao) : 'Não concluída' }}</dd></div>
+        @if (e.laudo_tecnico) {
+          <div class="largo"><dt>Laudo técnico</dt><dd class="texto-longo">{{ e.laudo_tecnico }}</dd></div>
+        }
+        @if (e.resultado) {
+          <div class="largo"><dt>Resultado</dt><dd class="texto-longo">{{ e.resultado }}</dd></div>
+        }
+      </dl>
+    }
+  } @else {
+    <p class="vazio">Não registrada. {{ ehTecnico() ? '' : 'O técnico atribuído registra o diagnóstico.' }}</p>
+  }
+
+  @if (podeRegistrar()) {
+    <form class="formulario" [formGroup]="formDiagnostico" (ngSubmit)="registrar()" novalidate>
+      <h3>Registrar diagnóstico</h3>
+      <div class="campo">
+        <label for="campo-diagnostico">Diagnóstico *</label>
+        <textarea
+          id="campo-diagnostico"
+          formControlName="diagnostico"
+          [attr.aria-invalid]="invalido('diagnostico')"
+          [attr.aria-describedby]="invalido('diagnostico') ? 'erro-diagnostico' : 'dica-diagnostico'"
+        ></textarea>
+        @if (invalido('diagnostico')) {
+          <span class="erro-campo" id="erro-diagnostico">Descreva o diagnóstico.</span>
+        } @else {
+          <span class="dica" id="dica-diagnostico">Ao salvar, a OS passa de Recebida para Em análise.</span>
+        }
+      </div>
+      <div class="botoes">
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Salvando…' : 'Registrar diagnóstico' }}
+        </button>
+      </div>
+    </form>
+  } @else if (!execucao() && ehTecnico() && !ordem().tecnico) {
+    <p class="dica">A OS ainda não tem técnico atribuído.</p>
+  }
+
+  @if (editando()) {
+    <form class="formulario" [formGroup]="formEdicao" (ngSubmit)="salvarEdicao()" novalidate>
+      <h3>Editar execução técnica</h3>
+      <div class="campo">
+        <label for="campo-edicao-diagnostico">Diagnóstico *</label>
+        <textarea id="campo-edicao-diagnostico" formControlName="diagnostico"
+          [attr.aria-invalid]="formEdicao.controls.diagnostico.invalid && formEdicao.controls.diagnostico.touched"></textarea>
+      </div>
+      <div class="campo">
+        <label for="campo-laudo">Laudo técnico</label>
+        <textarea id="campo-laudo" formControlName="laudo_tecnico"></textarea>
+      </div>
+      <div class="campo">
+        <label for="campo-resultado">Resultado</label>
+        <textarea id="campo-resultado" formControlName="resultado"></textarea>
+      </div>
+      <div class="campo">
+        <label for="campo-conclusao">Data de conclusão do reparo</label>
+        <input id="campo-conclusao" type="datetime-local" formControlName="data_conclusao" aria-describedby="dica-conclusao" />
+        <span class="dica" id="dica-conclusao">Necessária para concluir o reparo. Não pode ser anterior ao início da análise.</span>
+      </div>
+      <div class="botoes">
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Salvando…' : 'Salvar' }}
+        </button>
+        <button class="botao" type="button" (click)="editando.set(false)" [disabled]="enviando()">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  @if (faltaDataConclusao()) {
+    <p class="dica formulario">Para concluir o reparo, o técnico registra a data de conclusão no laudo.</p>
+  }
+
+  @if (podeConcluir()) {
+    <div class="formulario">
+      @if (confirmandoConclusao()) {
+        <div class="confirmacao" role="group" aria-labelledby="confirmar-conclusao">
+          <p id="confirmar-conclusao"><strong>Concluir o reparo?</strong> A OS passa para Concluída e segue para pagamento e expedição.</p>
+          <div class="botoes">
+            <button class="botao botao-sucesso" type="button" (click)="concluir()" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+              {{ enviando() ? 'Concluindo…' : 'Confirmar conclusão' }}
+            </button>
+            <button class="botao" type="button" (click)="confirmandoConclusao.set(false)" [disabled]="enviando()">Voltar</button>
+          </div>
+        </div>
+      } @else {
+        <div class="botoes">
+          <button class="botao botao-sucesso" type="button" (click)="confirmandoConclusao.set(true)">Concluir reparo</button>
+        </div>
+      }
+    </div>
+  }
+
+  <app-mensagem-acao [mensagem]="mensagem()" />
+</section>

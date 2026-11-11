@@ -1,0 +1,58 @@
+<section class="pagina" aria-labelledby="cliente-titulo" [attr.aria-busy]="carregando()">
+  @if (carregando()) {
+    <p class="estado">Carregando cliente…</p>
+  } @else if (naoEncontrado()) {
+    <div class="estado painel">
+      <h1 id="cliente-titulo">Cliente não encontrado</h1>
+      <span>O cliente solicitado não existe ou foi informado um número inválido.</span>
+      <a class="botao" routerLink="/clientes">Voltar para a lista</a>
+    </div>
+  } @else if (erro(); as mensagem) {
+    <div class="estado painel" role="alert">
+      <h1 id="cliente-titulo">Não foi possível carregar o cliente</h1>
+      <span>{{ mensagem }}</span>
+      <button class="botao" type="button" (click)="carregar()">Tentar novamente</button>
+    </div>
+  } @else if (cliente(); as c) {
+    @if (mensagemSucesso(); as sucesso) {
+      <p class="aviso aviso-sucesso" role="status">{{ sucesso }}</p>
+    }
+
+    <header class="cabecalho">
+      <div>
+        <p class="eyebrow">CLIENTE Nº {{ c.id_cliente }}</p>
+        <h1 id="cliente-titulo">{{ c.nome_razao_social }}</h1>
+        <p class="descricao">
+          {{ rotuloTipoPessoa(c.tipo_pessoa) }} ·
+          {{ c.tipo_pessoa === 'JURIDICA' ? 'CNPJ' : 'CPF' }}
+          {{ formatarDocumento(c.cpf_cnpj, c.tipo_pessoa) }}
+        </p>
+      </div>
+      <div class="acoes">
+        <a class="botao" routerLink="/clientes">Voltar</a>
+        <a class="botao botao-primario" [routerLink]="['/clientes', c.id_cliente, 'editar']">Editar</a>
+      </div>
+    </header>
+
+    <div class="grade">
+      <section class="painel" aria-labelledby="contato-titulo">
+        <h2 id="contato-titulo">Contato</h2>
+        <dl>
+          <div><dt>Telefone</dt><dd>{{ formatarTelefone(c.telefone) }}</dd></div>
+          <div><dt>E-mail</dt><dd>{{ c.email || 'Não informado' }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="painel" aria-labelledby="endereco-titulo">
+        <h2 id="endereco-titulo">Endereço</h2>
+        <dl>
+          <div><dt>Logradouro</dt><dd>{{ c.logradouro }}, {{ c.numero }}</dd></div>
+          <div><dt>Complemento</dt><dd>{{ c.complemento || '—' }}</dd></div>
+          <div><dt>Bairro</dt><dd>{{ c.bairro }}</dd></div>
+          <div><dt>Cidade / UF</dt><dd>{{ c.cidade }} / {{ c.uf }}</dd></div>
+          <div><dt>CEP</dt><dd>{{ formatarCep(c.cep) }}</dd></div>
+        </dl>
+      </section>
+    </div>
+  }
+</section>

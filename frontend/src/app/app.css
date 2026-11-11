@@ -1,0 +1,23 @@
+:host {
+	display: block;
+	min-height: 100dvh;
+	background: var(--surface-page);
+	color: var(--text-primary);
+}
+
+.application-shell {
+	display: flex;
+	min-height: 100dvh;
+	flex-direction: column;
+}
+
+.page-region {
+	display: block;
+	width: 100%;
+	min-height: calc(100dvh - 125px);
+	padding: 0;
+}
+
+.legacy-placeholder {
+	display: none !important;
+}

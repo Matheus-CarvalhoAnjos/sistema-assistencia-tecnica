@@ -1,0 +1,20 @@
+[
+  {
+    "nome": "ADM Teste",
+    "email": "adm.teste@assistenciatecnica.test",
+    "perfil": "ADMINISTRADOR",
+    "senha": "<defina-uma-senha>"
+  },
+  {
+    "nome": "Atendente Testa",
+    "email": "atendente.teste@assistenciatecnica.test",
+    "perfil": "ATENDENTE",
+    "senha": "<defina-uma-senha>"
+  },
+  {
+    "nome": "Tecnico Teste",
+    "email": "tecnico.teste@assistenciatecnica.test",
+    "perfil": "TECNICO",
+    "senha": "<defina-uma-senha>"
+  }
+]

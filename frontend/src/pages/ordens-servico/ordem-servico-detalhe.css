@@ -1,0 +1,174 @@
+.grade {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.grade-inferior {
+  margin-top: 14px;
+}
+
+.titulo-bloco {
+  margin: 26px 0 12px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.largura-total {
+  grid-column: 1 / -1;
+}
+
+.acoes {
+  align-items: center;
+}
+
+.valor {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.alerta-texto {
+  color: #f0b86e;
+}
+
+.aviso-neutro {
+  border-color: var(--line-default);
+  background: var(--surface-card);
+}
+
+dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+dl div {
+  display: grid;
+  gap: 3px;
+}
+
+dl .largo {
+  grid-column: 1 / -1;
+}
+
+dl.solicitacao {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-subtle);
+}
+
+dt {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+dd {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.atribuir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.campo {
+  display: grid;
+  flex: 1 1 200px;
+  gap: 6px;
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.campo select {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line-default);
+  border-radius: 7px;
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+.atribuir + .descricao,
+.atribuir ~ .aviso {
+  margin-top: 10px;
+}
+
+.lista {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.lista li {
+  display: grid;
+  gap: 2px;
+}
+
+.secundario {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.linha-tempo {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0 0 0 16px;
+  border-left: 2px solid var(--line-default);
+  list-style: none;
+}
+
+.linha-tempo li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.linha-tempo li::before {
+  position: absolute;
+  top: 5px;
+  left: -22px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-blue-highlight);
+  content: '';
+}
+
+.linha-tempo time {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.nota {
+  margin-top: 14px;
+  font-size: 11px;
+}
+
+.estado h1 {
+  font-size: 18px;
+}
+
+@media (max-width: 820px) {
+  .grade,
+  dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

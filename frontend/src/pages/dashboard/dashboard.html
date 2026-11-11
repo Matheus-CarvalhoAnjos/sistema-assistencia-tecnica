@@ -1,0 +1,180 @@
+<section class="dashboard" aria-labelledby="dashboard-title">
+  <header class="dashboard-heading">
+    <div>
+      <p class="eyebrow">OPERAÇÃO</p>
+      <h1 id="dashboard-title">{{ ehTecnico() ? 'Minhas Ordens de Serviço' : 'Visão geral' }}</h1>
+      <p class="heading-description">
+        {{ ehTecnico() ? 'Ordens de Serviço atribuídas a você' : 'Acompanhamento das Ordens de Serviço' }}
+      </p>
+    </div>
+    @if (erro() || carregando()) {
+      <span class="connection-state" [attr.data-estado]="erro() ? 'erro' : 'carregando'">
+        <span class="state-dot" aria-hidden="true"></span>
+        @if (erro()) {
+          Sem conexão de dados
+        } @else {
+          Atualizando…
+        }
+      </span>
+    }
+  </header>
+
+  <section class="orders-section" aria-labelledby="orders-title">
+    <div class="section-heading orders-heading">
+      <div>
+        <p class="eyebrow">ACOMPANHAMENTO</p>
+        <h2 id="orders-title">Ordens de Serviço</h2>
+      </div>
+      <span class="record-count" aria-live="polite">
+        @if (!carregando() && !erro()) {
+          {{ ordens().length }} {{ ordens().length === 1 ? 'registro' : 'registros' }}
+          @if (!ehTecnico() && semTecnico() > 0) {
+            · <strong class="alerta-texto">{{ semTecnico() }} sem técnico</strong>
+          }
+        }
+      </span>
+    </div>
+
+    <div class="filtros">
+      <div class="filtro filtro-busca">
+        <label for="filtro-busca">Buscar</label>
+        <input
+          id="filtro-busca"
+          type="search"
+          autocomplete="off"
+          placeholder="Nº da OS, cliente, equipamento ou nº de série"
+          (input)="aoDigitarBusca($event)"
+        />
+      </div>
+      <div class="filtro">
+        <label for="filtro-status">Status</label>
+        <select id="filtro-status" (change)="aoMudarStatus($event)">
+          <option value="" [selected]="filtroStatus() === ''">Todos</option>
+          <option [value]="naoFinalizadas" [selected]="filtroStatus() === naoFinalizadas">Não finalizadas</option>
+          @for (s of status; track s.codigo) {
+            <option [value]="s.codigo" [selected]="filtroStatus() === s.codigo">{{ s.titulo }}</option>
+          }
+        </select>
+      </div>
+      @if (!ehTecnico()) {
+        <div class="filtro">
+          <label for="filtro-tecnico">Técnico</label>
+          <select id="filtro-tecnico" (change)="aoMudarTecnico($event)">
+            <option value="" [selected]="filtroTecnico() === ''">Todos</option>
+            <option value="sem" [selected]="filtroTecnico() === 'sem'">Sem técnico</option>
+            @for (t of tecnicos(); track t.id_usuario) {
+              <option [value]="'' + t.id_usuario" [selected]="filtroTecnico() === '' + t.id_usuario">{{ t.nome }}</option>
+            }
+          </select>
+        </div>
+      }
+      @if (filtrosAtivos()) {
+        <button class="botao-limpar" type="button" (click)="limparFiltros()">Limpar filtros</button>
+      }
+    </div>
+
+    <div class="table-scroll" [attr.aria-busy]="carregando()">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Nº da OS</th>
+            <th scope="col">Cliente</th>
+            <th scope="col">Equipamento</th>
+            @if (!ehTecnico()) {
+              <th scope="col">Técnico</th>
+            }
+            <th scope="col">Status</th>
+            <th scope="col">Abertura</th>
+            <th scope="col">Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (carregando()) {
+            <tr>
+              <td class="empty-cell" [attr.colspan]="ehTecnico() ? 6 : 7">
+                <strong>Carregando Ordens de Serviço…</strong>
+              </td>
+            </tr>
+          } @else if (erro(); as mensagem) {
+            <tr>
+              <td class="empty-cell" [attr.colspan]="ehTecnico() ? 6 : 7" role="alert">
+                <span class="empty-symbol" aria-hidden="true">!</span>
+                <strong>Não foi possível carregar as Ordens de Serviço</strong>
+                <span>{{ mensagem }}</span>
+                <button class="botao-limpar" type="button" (click)="atualizar()">Tentar novamente</button>
+              </td>
+            </tr>
+          } @else {
+            @for (ordem of ordens(); track ordem.id_os) {
+              <tr>
+                <td class="numero-os">#{{ ordem.id_os }}</td>
+                <td>{{ ordem.nome_cliente }}</td>
+                <td>
+                  {{ ordem.tipo_equipamento }}
+                  <span class="secundario">{{ ordem.marca }} {{ ordem.modelo }}</span>
+                </td>
+                @if (!ehTecnico()) {
+                  <td>
+                    @if (ordem.nome_tecnico) {
+                      {{ ordem.nome_tecnico }}
+                    } @else {
+                      <span class="alerta-texto">Sem técnico</span>
+                    }
+                  </td>
+                }
+                <td><app-status-os [status]="ordem.status" /></td>
+                <td>{{ formatarData(ordem.data_abertura) }}</td>
+                <td>
+                  <a class="link-acao" [routerLink]="['/ordens-servico', ordem.id_os]" [attr.aria-label]="'Abrir OS ' + ordem.id_os">
+                    Abrir
+                  </a>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="empty-cell" [attr.colspan]="ehTecnico() ? 6 : 7">
+                  <span class="empty-symbol" aria-hidden="true">—</span>
+                  @if (filtrosAtivos()) {
+                    <strong>Nenhuma Ordem de Serviço encontrada</strong>
+                    <span>Ajuste ou limpe os filtros.</span>
+                  } @else if (ehTecnico()) {
+                    <strong>Nenhuma Ordem de Serviço atribuída a você</strong>
+                    <span>As OS aparecem aqui quando um atendente ou administrador as atribui a você.</span>
+                  } @else {
+                    <strong>Nenhuma Ordem de Serviço registrada</strong>
+                    <span>As OS são geradas ao abrir uma solicitação.</span>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="status-section" aria-labelledby="status-title">
+    <div class="section-heading">
+      <h2 id="status-title">Ordens por situação</h2>
+      @if (erro()) {
+        <span>Dados não disponíveis</span>
+      }
+    </div>
+
+    <div class="status-grid">
+      @for (indicador of indicadores(); track indicador.codigo) {
+        <button
+          type="button"
+          class="status-item"
+          [attr.data-tone]="indicador.tom"
+          [class.selecionado]="filtroStatus() === indicador.codigo"
+          [attr.aria-pressed]="filtroStatus() === indicador.codigo"
+          (click)="filtrarPorStatus(indicador.codigo)"
+        >
+          <span class="status-label">{{ indicador.titulo }}</span>
+          <strong class="status-value">{{ erro() ? '—' : indicador.quantidade }}</strong>
+        </button>
+      }
+    </div>
+  </section>
+</section>

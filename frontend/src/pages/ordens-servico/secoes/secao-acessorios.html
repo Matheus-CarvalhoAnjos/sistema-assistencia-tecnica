@@ -1,0 +1,72 @@
+<section class="painel" aria-labelledby="acessorios-titulo">
+  <div class="cabecalho-secao">
+    <h2 id="acessorios-titulo">Acessórios recebidos</h2>
+    @if (podeOperar() && edicao() === null) {
+      <button class="botao botao-pequeno" type="button" (click)="abrir()">Registrar acessório</button>
+    }
+  </div>
+
+  @if (ordem().acessorios.length) {
+    <ul class="lista">
+      @for (a of ordem().acessorios; track a.id_acessorio_recebido) {
+        <li>
+          <div class="linha-acessorio">
+            <span>{{ a.quantidade }}× {{ a.descricao_acessorio }}</span>
+            @if (podeOperar() && edicao() === null) {
+              <button class="botao botao-pequeno" type="button" (click)="editar(a)"
+                [attr.aria-label]="'Editar ' + a.quantidade + '× ' + a.descricao_acessorio + ' (registro nº ' + a.id_acessorio_recebido + ')'">Editar</button>
+            }
+          </div>
+          @if (a.observacoes) {
+            <span class="secundario">{{ a.observacoes }}</span>
+          }
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="descricao">Nenhum acessório registrado.</p>
+  }
+
+  @if (edicao() !== null) {
+    <form class="formulario" [formGroup]="form" (ngSubmit)="salvar()" novalidate>
+      <h3>{{ incluindo() ? 'Novo acessório recebido' : 'Alterar acessório recebido' }}</h3>
+      @if (carregandoCatalogo()) {
+        <p class="vazio" role="status">Carregando acessórios…</p>
+      } @else {
+        <div class="linha-campos">
+          <div class="campo">
+            <label for="campo-acessorio">Acessório *</label>
+            <select id="campo-acessorio" formControlName="id_acessorio" [attr.aria-invalid]="invalido()">
+              <option [value]="0" disabled>Selecione</option>
+              @for (c of opcoes(); track c.id_acessorio) {
+                <option [value]="c.id_acessorio">{{ c.descricao }}</option>
+              }
+            </select>
+          </div>
+          <div class="campo">
+            <label for="campo-quantidade-acessorio">Quantidade *</label>
+            <input id="campo-quantidade-acessorio" type="number" min="1" step="1" formControlName="quantidade" />
+          </div>
+        </div>
+        <div class="campo">
+          <label for="campo-obs-acessorio">Observações</label>
+          <input id="campo-obs-acessorio" type="text" formControlName="observacoes" />
+        </div>
+        @if (!incluindo()) {
+          <span class="dica">A alteração fica no histórico da OS com os valores anteriores e novos.</span>
+        }
+        @if (invalido()) {
+          <span class="erro-campo">Escolha o acessório e informe uma quantidade inteira maior que zero.</span>
+        }
+        <div class="botoes">
+          <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+            {{ enviando() ? 'Salvando…' : incluindo() ? 'Registrar' : 'Salvar alteração' }}
+          </button>
+          <button class="botao" type="button" (click)="fechar()" [disabled]="enviando()">Cancelar</button>
+        </div>
+      }
+    </form>
+  }
+
+  <app-mensagem-acao [mensagem]="mensagem()" />
+</section>

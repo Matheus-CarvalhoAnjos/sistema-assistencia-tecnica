@@ -1,0 +1,158 @@
+<section class="painel" aria-labelledby="orcamentos-titulo">
+  <div class="cabecalho-secao">
+    <h2 id="orcamentos-titulo">Orçamentos</h2>
+    @if (podeEmitirPerfil() && !emitindo() && !bloqueioEmissao()) {
+      <button class="botao botao-pequeno botao-primario" type="button" (click)="abrirEmissao()">Emitir orçamento</button>
+    }
+  </div>
+
+  @if (orcamentos().length) {
+    <ol class="lista-registros" aria-label="Orçamentos da OS, do mais recente ao mais antigo">
+      @for (o of orcamentos(); track o.id_orcamento) {
+        <li class="registro">
+          <div class="registro-topo">
+            <strong>Orçamento nº {{ o.id_orcamento }} · {{ formatarMoeda(o.valor_total) }}</strong>
+            <span class="etiqueta" [attr.data-tom]="rotuloStatus(o.status).tom">{{ rotuloStatus(o.status).titulo }}</span>
+          </div>
+          <span class="secundario">
+            Emitido em {{ formatarDataHora(o.data_emissao) }} · válido até {{ formatarDataHora(o.data_validade) }}
+          </span>
+
+          @if (o.itens?.length) {
+            <table class="tabela-itens">
+              <caption class="secundario">Itens do orçamento nº {{ o.id_orcamento }}</caption>
+              <thead>
+                <tr><th scope="col">Tipo</th><th scope="col">Descrição</th><th scope="col" class="numero">Qtd.</th><th scope="col" class="numero">Unitário</th><th scope="col" class="numero">Subtotal</th></tr>
+              </thead>
+              <tbody>
+                @for (item of o.itens; track $index) {
+                  <tr>
+                    <td>{{ item.tipo_item === 'PECA' ? 'Peça' : 'Serviço' }}</td>
+                    <td>{{ item.descricao }}</td>
+                    <td class="numero">{{ item.quantidade }}</td>
+                    <td class="numero">{{ formatarMoeda(item.valor_unitario) }}</td>
+                    <td class="numero">{{ formatarMoeda(subtotal(item)) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+
+          @if (o.resposta; as r) {
+            <span class="secundario">
+              {{ r.decisao === 'APROVADO' ? 'Aprovado' : 'Rejeitado' }} pelo cliente em {{ formatarDataHora(r.data_resposta) }}
+              @if (r.observacoes) { · {{ r.observacoes }} }
+            </span>
+          }
+
+          @if (podeResponder() && pendente()?.id_orcamento === o.id_orcamento) {
+            @if (respondendo(); as resposta) {
+              <div class="confirmacao" role="group" aria-labelledby="confirmar-resposta">
+                <p id="confirmar-resposta">
+                  @if (resposta.decisao === 'APROVADO') {
+                    <strong>Registrar a aprovação do cliente?</strong> A OS passa para Em reparo.
+                  } @else {
+                    <strong>Registrar a rejeição do cliente?</strong> A OS será encerrada sem reparo.
+                  }
+                </p>
+                <div class="campo">
+                  <label for="campo-observacoes-resposta">Observações (opcional)</label>
+                  <textarea id="campo-observacoes-resposta" [value]="observacoes()" (input)="observacoes.set($any($event.target).value)"></textarea>
+                </div>
+                <div class="botoes">
+                  <button
+                    class="botao"
+                    [class.botao-sucesso]="resposta.decisao === 'APROVADO'"
+                    [class.botao-perigo]="resposta.decisao === 'REJEITADO'"
+                    type="button"
+                    (click)="confirmarResposta()"
+                    [disabled]="enviando()"
+                    [attr.aria-busy]="enviando()"
+                  >
+                    {{ enviando() ? 'Registrando…' : resposta.decisao === 'APROVADO' ? 'Confirmar aprovação' : 'Confirmar rejeição' }}
+                  </button>
+                  <button class="botao" type="button" (click)="respondendo.set(null)" [disabled]="enviando()">Voltar</button>
+                </div>
+              </div>
+            } @else {
+              <div class="botoes">
+                <button class="botao botao-sucesso botao-pequeno" type="button" (click)="pedirResposta(o.id_orcamento, 'APROVADO')">Cliente aprovou</button>
+                <button class="botao botao-perigo botao-pequeno" type="button" (click)="pedirResposta(o.id_orcamento, 'REJEITADO')">Cliente rejeitou</button>
+              </div>
+            }
+          }
+        </li>
+      }
+    </ol>
+  } @else {
+    <p class="vazio">Nenhum orçamento emitido.</p>
+  }
+
+  @if (podeEmitirPerfil() && !emitindo() && bloqueioEmissao(); as motivo) {
+    @if (ordem().status !== 'FINALIZADA' && ordem().status !== 'ENCERRADA_SEM_REPARO') {
+      <p class="dica formulario">{{ motivo }}</p>
+    }
+  }
+
+  @if (emitindo()) {
+    <form class="formulario" [formGroup]="formOrcamento" (ngSubmit)="emitir()" novalidate>
+      <h3>Novo orçamento</h3>
+      @if (ordem().equipamento.garantia_status === 'SIM') {
+        <p class="dica">Equipamento em garantia: itens de serviço são cobrados a R$ 0,00 (peças continuam cobradas).</p>
+      }
+
+      <div formArrayName="itens" class="lista-registros">
+      @for (grupo of itens.controls; track grupo; let i = $index) {
+        <fieldset class="registro" [formGroupName]="i">
+          <legend class="secundario">Item {{ i + 1 }}</legend>
+          <div class="linha-campos">
+            <div class="campo">
+              <label [for]="'item-tipo-' + i">Tipo</label>
+              <select [id]="'item-tipo-' + i" formControlName="tipo_item" (change)="recalcular()">
+                <option value="PECA">Peça</option>
+                <option value="SERVICO">Serviço</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label [for]="'item-quantidade-' + i">Quantidade</label>
+              <input [id]="'item-quantidade-' + i" type="number" min="1" step="1" formControlName="quantidade" (input)="recalcular()"
+                [attr.aria-invalid]="itemInvalido(i, 'quantidade')" />
+            </div>
+            <div class="campo">
+              <label [for]="'item-valor-' + i">Valor unitário (R$)</label>
+              <input [id]="'item-valor-' + i" type="number" min="0" step="0.01" formControlName="valor_unitario" (input)="recalcular()"
+                [attr.aria-invalid]="itemInvalido(i, 'valor_unitario')" />
+            </div>
+          </div>
+          <div class="campo">
+            <label [for]="'item-descricao-' + i">Descrição *</label>
+            <input [id]="'item-descricao-' + i" type="text" formControlName="descricao" maxlength="255"
+              [attr.aria-invalid]="itemInvalido(i, 'descricao')" />
+            @if (itemInvalido(i, 'descricao')) {
+              <span class="erro-campo">Informe a descrição do item.</span>
+            }
+          </div>
+          @if (itens.length > 1) {
+            <div class="botoes">
+              <button class="botao botao-pequeno" type="button" (click)="removerItem(i)">Remover item {{ i + 1 }}</button>
+            </div>
+          }
+        </fieldset>
+      }
+      </div>
+
+      <div class="botoes">
+        <button class="botao botao-pequeno" type="button" (click)="adicionarItem()">Adicionar item</button>
+      </div>
+      <p class="dica">Total previsto: <strong>{{ formatarMoeda(totalPrevisto()) }}</strong> · o valor final é calculado pela API.</p>
+      <div class="botoes">
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Emitindo…' : 'Emitir orçamento' }}
+        </button>
+        <button class="botao" type="button" (click)="emitindo.set(false)" [disabled]="enviando()">Cancelar</button>
+      </div>
+    </form>
+  }
+
+  <app-mensagem-acao [mensagem]="mensagem()" />
+</section>

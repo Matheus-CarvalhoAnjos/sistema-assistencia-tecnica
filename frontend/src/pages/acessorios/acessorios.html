@@ -1,0 +1,90 @@
+<section class="pagina" aria-labelledby="acessorios-titulo">
+  <header class="cabecalho">
+    <div>
+      <p class="eyebrow">CATÁLOGO</p>
+      <h1 id="acessorios-titulo">Acessórios</h1>
+      <p class="descricao">Itens que podem ser registrados como recebidos junto com os equipamentos.</p>
+    </div>
+    <a class="botao" routerLink="/solicitacoes/nova">Ir para nova solicitação</a>
+  </header>
+
+  <div class="grade">
+    <section class="painel" aria-labelledby="novo-titulo">
+      <h2 id="novo-titulo">Cadastrar acessório</h2>
+
+      @if (sucesso(); as mensagemSucesso) {
+        <p class="aviso aviso-sucesso" role="status">{{ mensagemSucesso }}</p>
+      }
+      @if (erro(); as mensagemErro) {
+        <p class="aviso aviso-erro" role="alert">{{ mensagemErro }}</p>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="cadastrar()" novalidate>
+        <div class="campo">
+          <label for="acessorio-descricao">Descrição *</label>
+          <input
+            id="acessorio-descricao"
+            formControlName="descricao"
+            placeholder="Ex.: Carregador"
+            autocomplete="off"
+            [attr.aria-invalid]="!!mensagemCampo('descricao')"
+            [attr.aria-describedby]="mensagemCampo('descricao') ? 'erro-descricao' : null"
+          />
+          @if (mensagemCampo('descricao'); as m) {
+            <span class="erro-campo" id="erro-descricao">{{ m }}</span>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="acessorio-preco_atual">Preço de referência (opcional)</label>
+          <input
+            id="acessorio-preco_atual"
+            formControlName="preco_atual"
+            inputmode="decimal"
+            placeholder="Ex.: 35,90"
+            autocomplete="off"
+            [attr.aria-invalid]="!!mensagemCampo('preco_atual')"
+            [attr.aria-describedby]="mensagemCampo('preco_atual') ? 'erro-preco' : 'ajuda-preco'"
+          />
+          @if (mensagemCampo('preco_atual'); as m) {
+            <span class="erro-campo" id="erro-preco">{{ m }}</span>
+          } @else {
+            <span class="ajuda" id="ajuda-preco">Em reais. Deixe em branco se não se aplica.</span>
+          }
+        </div>
+
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Cadastrando…' : 'Cadastrar acessório' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="painel" aria-labelledby="lista-titulo" [attr.aria-busy]="carregando()">
+      <h2 id="lista-titulo">Acessórios ativos ({{ acessorios().length }})</h2>
+
+      @if (carregando()) {
+        <p class="estado">Carregando acessórios…</p>
+      } @else if (erroLista(); as m) {
+        <div class="estado" role="alert">
+          <strong>Não foi possível carregar o catálogo.</strong>
+          <span>{{ m }}</span>
+          <button class="botao" type="button" (click)="carregar()">Tentar novamente</button>
+        </div>
+      } @else if (acessorios().length === 0) {
+        <div class="estado">
+          <strong>Nenhum acessório cadastrado.</strong>
+          <span>Cadastre ao lado os itens mais comuns, como carregador e cabo de força.</span>
+        </div>
+      } @else {
+        <ul class="lista">
+          @for (a of acessorios(); track a.id_acessorio) {
+            <li>
+              <span>{{ a.descricao }}</span>
+              <span class="preco">{{ formatarPreco(a.preco_atual) }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+</section>

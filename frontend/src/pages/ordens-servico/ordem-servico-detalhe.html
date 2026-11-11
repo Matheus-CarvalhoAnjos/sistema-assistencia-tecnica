@@ -1,0 +1,195 @@
+<section class="pagina" aria-labelledby="os-titulo" [attr.aria-busy]="carregando()">
+  @if (carregando()) {
+    <p class="estado">Carregando Ordem de Serviço…</p>
+  } @else if (naoEncontrada()) {
+    <div class="estado painel">
+      <h1 id="os-titulo">Ordem de Serviço não encontrada</h1>
+      <span>Ela não existe ou não está disponível para o seu perfil.</span>
+      <a class="botao" routerLink="/">Voltar para o início</a>
+    </div>
+  } @else if (erro(); as mensagem) {
+    <div class="estado painel" role="alert">
+      <h1 id="os-titulo">Não foi possível carregar a Ordem de Serviço</h1>
+      <span>{{ mensagem }}</span>
+      <button class="botao" type="button" (click)="carregar()">Tentar novamente</button>
+    </div>
+  } @else if (ordem(); as os) {
+    <header class="cabecalho">
+      <div>
+        <p class="eyebrow">ORDEM DE SERVIÇO</p>
+        <h1 id="os-titulo">OS nº {{ os.id_os }}</h1>
+        <p class="descricao">
+          {{ os.equipamento.tipo_equipamento }} · {{ os.equipamento.marca }} {{ os.equipamento.modelo }}
+          · aberta em {{ formatarDataHora(os.data_abertura) }}
+        </p>
+      </div>
+      <div class="acoes">
+        <app-status-os [status]="os.status" />
+        <a class="botao" routerLink="/">Voltar</a>
+      </div>
+    </header>
+
+    @if (os.data_encerramento) {
+      <p class="aviso aviso-neutro">
+        Encerrada em {{ formatarDataHora(os.data_encerramento) }}
+        @if (os.tipo_encerramento) {
+          · {{ rotulosEncerramento[os.tipo_encerramento] }}
+        }
+        @if (os.motivo_encerramento) {
+          · {{ os.motivo_encerramento }}
+        }
+      </p>
+    }
+
+    <div class="grade">
+      <!-- Técnico responsável -->
+      <section class="painel" aria-labelledby="tecnico-titulo">
+        <h2 id="tecnico-titulo">Técnico responsável</h2>
+        @if (os.tecnico; as tecnico) {
+          <p class="valor">{{ tecnico.nome }}</p>
+          @if (!tecnico.ativo) {
+            <p class="aviso aviso-erro">Este técnico está inativo. Reatribua a OS para que o atendimento continue.</p>
+          }
+        } @else {
+          <p class="valor alerta-texto">Sem técnico atribuído</p>
+        }
+
+        @if (podeAtribuir()) {
+          @if (encerrada()) {
+            <p class="descricao">A OS está encerrada; o técnico não pode ser alterado.</p>
+          } @else {
+            <div class="atribuir">
+              <div class="campo">
+                <label for="selecao-tecnico">{{ os.tecnico ? 'Trocar técnico' : 'Atribuir técnico' }}</label>
+                <select id="selecao-tecnico" (change)="aoEscolherTecnico($event)">
+                  <option value="" [selected]="tecnicoEscolhido() === null">Selecione</option>
+                  @for (t of tecnicos(); track t.id_usuario) {
+                    <option [value]="t.id_usuario" [selected]="tecnicoEscolhido() === t.id_usuario">{{ t.nome }}</option>
+                  }
+                </select>
+              </div>
+              <button
+                class="botao botao-primario"
+                type="button"
+                (click)="atribuir()"
+                [disabled]="!tecnicoEscolhido() || tecnicoEscolhido() === os.tecnico?.id_usuario || atribuindo()"
+                [attr.aria-busy]="atribuindo()"
+              >
+                {{ atribuindo() ? 'Salvando…' : os.tecnico ? 'Trocar' : 'Atribuir' }}
+              </button>
+            </div>
+            @if (tecnicos().length === 0) {
+              <p class="descricao">Nenhum técnico ativo cadastrado.</p>
+            }
+          }
+          @if (mensagemAtribuicao(); as m) {
+            <p class="aviso" [class.aviso-sucesso]="m.tipo === 'sucesso'" [class.aviso-erro]="m.tipo === 'erro'" role="status">
+              {{ m.texto }}
+            </p>
+          }
+        }
+      </section>
+
+      <!-- Cliente -->
+      <section class="painel" aria-labelledby="cliente-titulo">
+        <h2 id="cliente-titulo">Cliente</h2>
+        <p class="valor">{{ os.cliente.nome_razao_social }}</p>
+        @if (os.cliente.telefone) {
+          <dl>
+            <div><dt>Telefone</dt><dd>{{ formatarTelefone(os.cliente.telefone) }}</dd></div>
+            <div><dt>E-mail</dt><dd>{{ os.cliente.email || 'Não informado' }}</dd></div>
+          </dl>
+        }
+        @if (os.solicitacao; as s) {
+          <dl class="solicitacao">
+            <div><dt>Solicitação</dt><dd>nº {{ s.id_solicitacao }} · {{ formatarData(s.data_abertura) }}</dd></div>
+            <div><dt>Problema relatado</dt><dd>{{ s.descricao_inicial }}</dd></div>
+          </dl>
+        }
+      </section>
+
+      <!-- Equipamento -->
+      <section class="painel" aria-labelledby="equipamento-titulo">
+        <h2 id="equipamento-titulo">Equipamento</h2>
+        <dl>
+          <div><dt>Tipo</dt><dd>{{ os.equipamento.tipo_equipamento }}</dd></div>
+          <div><dt>Marca / modelo</dt><dd>{{ os.equipamento.marca }} {{ os.equipamento.modelo }}</dd></div>
+          <div><dt>Nº de série</dt><dd>{{ os.equipamento.numero_serie || '—' }}</dd></div>
+          <div><dt>Garantia</dt><dd>{{ rotuloGarantia(os.equipamento.garantia_status) }}</dd></div>
+          <div class="largo"><dt>Estado físico do aparelho</dt><dd>{{ os.equipamento.estado_fisico }}</dd></div>
+          @if (os.equipamento.observacoes) {
+            <div class="largo"><dt>Observações</dt><dd>{{ os.equipamento.observacoes }}</dd></div>
+          }
+        </dl>
+      </section>
+
+      <!-- Acessórios (D7: inclusão até o reparo, com evento no histórico) -->
+      <app-secao-acessorios [ordem]="os" [podeRegistrarPerfil]="podeRegistrarAcessorio()" (alterado)="atualizar()" />
+    </div>
+
+    @if (erroComplementos()) {
+      <p class="aviso aviso-erro grade-inferior">Parte das informações de atendimento não pôde ser carregada.</p>
+    }
+
+    <h2 class="titulo-bloco">Atendimento</h2>
+    <div class="grade">
+      <app-secao-execucao
+        [ordem]="os"
+        [execucao]="execucao()"
+        [ehTecnico]="ehTecnico()"
+        [ehAdministrador]="ehAdministrador()"
+        (alterado)="atualizar()"
+      />
+      <app-secao-garantia [ordem]="os" [ehAtendente]="ehAtendente()" (alterado)="atualizar()" />
+
+      <app-secao-orcamentos
+        class="largura-total"
+        [ordem]="os"
+        [orcamentos]="orcamentos()"
+        [execucao]="execucao()"
+        [podeEmitirPerfil]="ehTecnico() || ehAdministrador()"
+        [podeResponderPerfil]="ehFuncionario()"
+        (alterado)="atualizar()"
+      />
+
+      @if (ehFuncionario()) {
+        <app-secao-avaliacao-financeira class="largura-total" [ordem]="os" [avaliacao]="avaliacao()" (alterado)="atualizar()" />
+        <app-secao-abatimentos [ordem]="os" [abatimentos]="abatimentos()" [resumo]="pagamentos()?.resumo ?? null" (alterado)="atualizar()" />
+        <app-secao-pagamentos
+          [ordem]="os"
+          [dados]="pagamentos()"
+          [podeOperar]="true"
+          [avaliacaoPendente]="!!avaliacao()?.pendente"
+          [limiteAvaliacao]="avaliacao()?.vigente ? (avaliacao()?.saldo_a_reembolsar ?? 0) : null"
+          (alterado)="atualizar()"
+        />
+      }
+      <app-secao-expedicao
+        [ordem]="os"
+        [expedicao]="expedicao()"
+        [saldoDevedor]="pagamentos()?.resumo?.saldo_devedor ?? 0"
+        [podeOperar]="ehFuncionario()"
+        [avaliacaoPendente]="ehFuncionario() && !!avaliacao()?.pendente"
+        (alterado)="atualizar()"
+      />
+
+      <app-secao-historico
+        class="largura-total"
+        [eventos]="historico()"
+        [derivados]="linhaTempo()"
+        [carregando]="carregandoComplementos()"
+        [falhou]="erroHistorico()"
+        [nomesUsuarios]="nomesUsuarios()"
+      />
+
+      <app-secao-encerramento
+        class="largura-total"
+        [ordem]="os"
+        [execucao]="execucao()"
+        [ehTecnico]="ehTecnico()"
+        [ehFuncionario]="ehFuncionario()"
+        (alterado)="atualizar()"
+      />
+    </div>
+  }
+</section>

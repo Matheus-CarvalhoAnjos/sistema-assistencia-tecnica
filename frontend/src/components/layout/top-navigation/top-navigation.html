@@ -1,0 +1,21 @@
+<nav class="top-navigation" aria-label="Navegação principal">
+  <div class="navigation-list">
+    @for (item of itensVisiveis(); track item.titulo) {
+      @if (item.rota) {
+        <a
+          class="navigation-item"
+          [routerLink]="item.rota"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.rota === '/' }"
+          ariaCurrentWhenActive="page"
+        >
+          {{ item.titulo }}
+        </a>
+      } @else {
+        <button class="navigation-item unavailable" type="button" disabled>
+          {{ item.titulo }}
+        </button>
+      }
+    }
+  </div>
+</nav>

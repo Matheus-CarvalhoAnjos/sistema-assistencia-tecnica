@@ -1,0 +1,227 @@
+<section class="pagina" aria-labelledby="form-titulo">
+  <header class="cabecalho">
+    <div>
+      <p class="eyebrow">{{ emEdicao() ? 'EDIÇÃO' : 'CADASTRO' }}</p>
+      <h1 id="form-titulo">{{ emEdicao() ? 'Editar cliente' : 'Novo cliente' }}</h1>
+      <p class="descricao">Campos marcados com * são obrigatórios.</p>
+    </div>
+  </header>
+
+  @if (naoEncontrado()) {
+    <div class="estado painel">
+      <strong>Cliente não encontrado.</strong>
+      <a class="botao" routerLink="/clientes">Voltar para a lista</a>
+    </div>
+  } @else if (carregando()) {
+    <p class="estado" aria-busy="true">Carregando cliente…</p>
+  } @else {
+    @if (erro(); as mensagem) {
+      <p class="aviso aviso-erro" role="alert" tabindex="-1">{{ mensagem }}</p>
+    }
+
+    <form [formGroup]="formulario" (ngSubmit)="salvar()" novalidate>
+      <fieldset class="painel">
+        <legend>Identificação</legend>
+
+        <div class="tipo" role="radiogroup" aria-labelledby="tipo-rotulo">
+          <span id="tipo-rotulo" class="rotulo">Tipo de pessoa *</span>
+          <label><input type="radio" formControlName="tipo_pessoa" value="FISICA" /> Pessoa física</label>
+          <label><input type="radio" formControlName="tipo_pessoa" value="JURIDICA" /> Pessoa jurídica</label>
+        </div>
+
+        <div class="linha">
+          <div class="campo largo">
+            <label for="campo-nome_razao_social">{{ rotuloNome() }} *</label>
+            <input
+              id="campo-nome_razao_social"
+              formControlName="nome_razao_social"
+              autocomplete="name"
+              [attr.aria-invalid]="!!mensagemCampo('nome_razao_social')"
+              [attr.aria-describedby]="mensagemCampo('nome_razao_social') ? 'erro-nome_razao_social' : null"
+            />
+            @if (mensagemCampo('nome_razao_social'); as m) {
+              <span class="erro-campo" id="erro-nome_razao_social">{{ m }}</span>
+            }
+          </div>
+
+          <div class="campo">
+            <label for="campo-cpf_cnpj">{{ rotuloDocumento() }} *</label>
+            <input
+              id="campo-cpf_cnpj"
+              formControlName="cpf_cnpj"
+              inputmode="numeric"
+              autocomplete="off"
+              [placeholder]="tipoPessoa() === 'JURIDICA' ? '00.000.000/0000-00' : '000.000.000-00'"
+              (input)="mascarar('cpf_cnpj')"
+              [attr.aria-invalid]="!!mensagemCampo('cpf_cnpj')"
+              [attr.aria-describedby]="mensagemCampo('cpf_cnpj') ? 'erro-cpf_cnpj' : null"
+            />
+            @if (mensagemCampo('cpf_cnpj'); as m) {
+              <span class="erro-campo" id="erro-cpf_cnpj">{{ m }}</span>
+            }
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="painel">
+        <legend>Contato</legend>
+        <div class="linha">
+          <div class="campo">
+            <label for="campo-telefone">Telefone *</label>
+            <input
+              id="campo-telefone"
+              formControlName="telefone"
+              type="tel"
+              inputmode="numeric"
+              autocomplete="tel"
+              placeholder="(00) 00000-0000"
+              (input)="mascarar('telefone')"
+              [attr.aria-invalid]="!!mensagemCampo('telefone')"
+              [attr.aria-describedby]="mensagemCampo('telefone') ? 'erro-telefone' : null"
+            />
+            @if (mensagemCampo('telefone'); as m) {
+              <span class="erro-campo" id="erro-telefone">{{ m }}</span>
+            }
+          </div>
+
+          <div class="campo largo">
+            <label for="campo-email">E-mail</label>
+            <input
+              id="campo-email"
+              formControlName="email"
+              type="email"
+              autocomplete="email"
+              [attr.aria-invalid]="!!mensagemCampo('email')"
+              [attr.aria-describedby]="mensagemCampo('email') ? 'erro-email' : null"
+            />
+            @if (mensagemCampo('email'); as m) {
+              <span class="erro-campo" id="erro-email">{{ m }}</span>
+            }
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="painel">
+        <legend>Endereço</legend>
+        <div class="linha">
+          <div class="campo curto">
+            <label for="campo-cep">CEP *</label>
+            <input
+              id="campo-cep"
+              formControlName="cep"
+              inputmode="numeric"
+              autocomplete="postal-code"
+              placeholder="00000-000"
+              (input)="mascarar('cep')"
+              [attr.aria-invalid]="!!mensagemCampo('cep')"
+              [attr.aria-describedby]="mensagemCampo('cep') ? 'erro-cep' : null"
+            />
+            @if (mensagemCampo('cep'); as m) {
+              <span class="erro-campo" id="erro-cep">{{ m }}</span>
+            }
+          </div>
+
+          <div class="campo largo">
+            <label for="campo-logradouro">Logradouro *</label>
+            <input
+              id="campo-logradouro"
+              formControlName="logradouro"
+              autocomplete="address-line1"
+              [attr.aria-invalid]="!!mensagemCampo('logradouro')"
+              [attr.aria-describedby]="mensagemCampo('logradouro') ? 'erro-logradouro' : null"
+            />
+            @if (mensagemCampo('logradouro'); as m) {
+              <span class="erro-campo" id="erro-logradouro">{{ m }}</span>
+            }
+          </div>
+
+          <div class="campo curto">
+            <label for="campo-numero">Número *</label>
+            <input
+              id="campo-numero"
+              formControlName="numero"
+              [attr.aria-invalid]="!!mensagemCampo('numero')"
+              [attr.aria-describedby]="mensagemCampo('numero') ? 'erro-numero' : null"
+            />
+            @if (mensagemCampo('numero'); as m) {
+              <span class="erro-campo" id="erro-numero">{{ m }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="linha">
+          <div class="campo">
+            <label for="campo-complemento">Complemento</label>
+            <input
+              id="campo-complemento"
+              formControlName="complemento"
+              autocomplete="address-line2"
+              [attr.aria-invalid]="!!mensagemCampo('complemento')"
+              [attr.aria-describedby]="mensagemCampo('complemento') ? 'erro-complemento' : null"
+            />
+            @if (mensagemCampo('complemento'); as m) {
+              <span class="erro-campo" id="erro-complemento">{{ m }}</span>
+            }
+          </div>
+
+          <div class="campo">
+            <label for="campo-bairro">Bairro *</label>
+            <input
+              id="campo-bairro"
+              formControlName="bairro"
+              [attr.aria-invalid]="!!mensagemCampo('bairro')"
+              [attr.aria-describedby]="mensagemCampo('bairro') ? 'erro-bairro' : null"
+            />
+            @if (mensagemCampo('bairro'); as m) {
+              <span class="erro-campo" id="erro-bairro">{{ m }}</span>
+            }
+          </div>
+
+          <div class="campo">
+            <label for="campo-cidade">Cidade *</label>
+            <input
+              id="campo-cidade"
+              formControlName="cidade"
+              autocomplete="address-level2"
+              [attr.aria-invalid]="!!mensagemCampo('cidade')"
+              [attr.aria-describedby]="mensagemCampo('cidade') ? 'erro-cidade' : null"
+            />
+            @if (mensagemCampo('cidade'); as m) {
+              <span class="erro-campo" id="erro-cidade">{{ m }}</span>
+            }
+          </div>
+
+          <div class="campo curto">
+            <label for="campo-uf">UF *</label>
+            <select
+              id="campo-uf"
+              formControlName="uf"
+              autocomplete="address-level1"
+              [attr.aria-invalid]="!!mensagemCampo('uf')"
+              [attr.aria-describedby]="mensagemCampo('uf') ? 'erro-uf' : null"
+            >
+              <option value="">Selecione</option>
+              @for (uf of ufs; track uf) {
+                <option [value]="uf">{{ uf }}</option>
+              }
+            </select>
+            @if (mensagemCampo('uf'); as m) {
+              <span class="erro-campo" id="erro-uf">{{ m }}</span>
+            }
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="acoes rodape">
+        <a
+          class="botao"
+          [routerLink]="voltarParaSolicitacao() ? ['/solicitacoes/nova'] : emEdicao() ? ['/clientes', id()] : ['/clientes']"
+          >Cancelar</a
+        >
+        <button class="botao botao-primario" type="submit" [disabled]="enviando()" [attr.aria-busy]="enviando()">
+          {{ enviando() ? 'Salvando…' : emEdicao() ? 'Salvar alterações' : 'Cadastrar cliente' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

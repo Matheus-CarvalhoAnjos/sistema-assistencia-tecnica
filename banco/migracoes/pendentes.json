@@ -1,0 +1,12 @@
+{
+  "descricao": "Migrações ainda NÃO executadas no banco principal, na ordem de execução (a ordem alfabética dos nomes é a mesma). Cada arquivo tem uma guarda de pré-condição que impede execução fora de ordem ou repetida. Os testes de integração aplicam as pendentes no banco _teste.",
+  "migracoes": [],
+  "executadas_no_principal": [
+    { "arquivo": "20261109_01_remover_status_solicitacao.sql", "data": "2026-11-09 17:02" },
+    { "arquivo": "20261109_02_avaliacao_reembolso_parcial.sql", "data": "2026-11-09 17:02" },
+    { "arquivo": "20261109_03_historico_evento_acessorio.sql", "data": "2026-11-09 17:02" },
+    { "arquivo": "20261109_04_abatimento_formal.sql", "data": "2026-11-09 17:02" }
+  ],
+  "estrutura_anterior": "estrutura_antes_migracoes_20261109.sql",
+  "backup_anterior": "banco/backups/assistencia_tecnica_20261109_170123_antes_migracoes.sql (testado: restauração com source, checksums idênticos)"
+}
