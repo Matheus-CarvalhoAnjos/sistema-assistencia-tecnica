@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "start:tidb": "node --env-file=.env.tidb src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test",
     "test:integracao": "node --test integracao/*.integracao.js",
