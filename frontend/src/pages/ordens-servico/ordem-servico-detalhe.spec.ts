@@ -280,7 +280,7 @@ describe('OrdemServicoDetalhePage', () => {
     expect(texto()).toContain('Placa oxidada');
   });
 
-  it('attendant does not see the diagnosis form, but checks the warranty while the order is EM_ANALISE', async () => {
+  it('attendant does not see the diagnosis form and only reads the warranty (checked by the technician)', async () => {
     const os = detalhes({ status: 'EM_ANALISE', tecnico });
     await criar('ATENDENTE', os, { execucao });
     backend.expectOne((r) => r.url === `${API}/usuarios`).flush([]);
@@ -288,6 +288,14 @@ describe('OrdemServicoDetalhePage', () => {
 
     expect(el().querySelector('#campo-diagnostico')).toBeNull();
     expect(botao('Editar diagnóstico e laudo')).toBeUndefined();
+    expect(el().querySelector('input[name="garantia"]')).toBeNull();
+    expect(botao('Salvar garantia')).toBeUndefined();
+    expect(texto()).toContain('Aguardando a verificação da garantia pelo técnico.');
+  });
+
+  it('assigned technician checks the warranty while the order is EM_ANALISE', async () => {
+    const os = detalhes({ status: 'EM_ANALISE', tecnico });
+    await criar('TECNICO', os, { execucao });
 
     el().querySelector<HTMLInputElement>('input[name="garantia"][value="NAO"]')!.dispatchEvent(new Event('change'));
     fixture.detectChanges();
@@ -297,15 +305,13 @@ describe('OrdemServicoDetalhePage', () => {
     expect(req.request.body).toEqual({ garantia_status: 'NAO' });
     req.flush({ mensagem: 'ok' });
     responderRecarga(os, { execucao });
-    backend.match((r) => r.url === `${API}/usuarios`).forEach((r) => r.flush([]));
     expect(texto()).toContain('Garantia registrada: Fora da garantia.');
   });
 
-  it('technician only reads the warranty: no choice, waits for the attendant', async () => {
-    await criar('TECNICO', detalhes({ status: 'EM_ANALISE', tecnico }), { execucao });
+  it('technician cannot change the warranty outside EM_ANALISE', async () => {
+    await criar('TECNICO', detalhes({ status: 'AGUARDANDO_APROVACAO', tecnico }), { execucao });
     expect(el().querySelector('input[name="garantia"]')).toBeNull();
     expect(botao('Salvar garantia')).toBeUndefined();
-    expect(texto()).toContain('Aguardando a verificação da garantia pelo atendente.');
   });
 
   it('administrator only reads the warranty', async () => {
@@ -318,15 +324,17 @@ describe('OrdemServicoDetalhePage', () => {
   it('technician issues a quote with items; the button is hidden while warranty is PENDENTE', async () => {
     await criar('TECNICO', detalhes({ status: 'EM_ANALISE', tecnico }), { execucao });
     expect(botao('Emitir orçamento')).toBeUndefined();
-    expect(texto()).toContain('Aguardando a verificação da garantia pelo atendente antes do orçamento.');
+    expect(texto()).toContain('Verifique a garantia antes de emitir o orçamento.');
   });
 
-  it('confirmed warranty: no quote button, repair goes on without charge', async () => {
+  it('warranty SIM still goes through a quote: services at R$ 0,00, parts charged', async () => {
     const os = detalhes({ status: 'EM_ANALISE', tecnico });
     os.equipamento.garantia_status = 'SIM';
     await criar('TECNICO', os, { execucao });
-    expect(botao('Emitir orçamento')).toBeUndefined();
-    expect(texto()).toContain('Equipamento em garantia: o reparo segue sem orçamento e sem cobrança.');
+
+    botao('Emitir orçamento')!.click();
+    fixture.detectChanges();
+    expect(texto()).toContain('itens de serviço são cobrados a R$ 0,00 (peças continuam cobradas)');
   });
 
   it('technician fills and sends a new quote', async () => {

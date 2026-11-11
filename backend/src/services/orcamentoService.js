@@ -99,13 +99,11 @@ class OrcamentoService extends BaseService {
         }
 
         if (ordem.garantia_status === "PENDENTE") {
-            throw erroComStatus("Aguarde a verificação da garantia pelo atendente antes de criar o orçamento.", 409);
+            throw erroComStatus("Verifique a garantia (técnico atribuído) antes de criar o orçamento.", 409);
         }
 
-        // Garantia confirmada: o reparo segue sem orçamento e sem cobrança (nenhum orçamento de valor zero é criado)
-        if (ordem.garantia_status === "SIM") {
-            throw erroComStatus("Equipamento coberto pela garantia: o reparo segue sem orçamento após a confirmação do atendente.", 409);
-        }
+        // Garantia SIM não dispensa o orçamento nem a aprovação do cliente: os serviços
+        // cobertos saem a R$ 0,00 e as peças mantêm o valor informado (ver cobertoPelaGarantia).
 
         const execucao = await execucaoRepository.buscarPorOs(idOs);
 

@@ -11,11 +11,12 @@ export const ROTULOS_GARANTIA: Readonly<Record<string, string>> = {
 };
 
 /**
- * Garantia da OS (RN05/RN06): verificada pelo ATENDENTE durante EM_ANALISE, antes do
- * orçamento (a API confere o perfil). Não volta para PENDENTE.
- * - SIM: a OS segue direto para o reparo em garantia, sem orçamento e sem cobrança.
- * - NAO: segue o fluxo normal de orçamento pelo técnico.
- * TÉCNICO e ADMINISTRADOR apenas consultam a situação.
+ * Garantia da OS (RN05/RN06): verificada e corrigida pelo TÉCNICO atribuído durante
+ * EM_ANALISE, até a emissão do orçamento (a API confere perfil, técnico, etapa e orçamento).
+ * Não volta para PENDENTE; SIM ↔ NAO pode ser corrigido.
+ * - SIM: o atendimento passa por orçamento; serviços cobertos saem a R$ 0,00, peças são cobradas.
+ * - NAO: orçamento normal.
+ * ADMINISTRADOR e ATENDENTE apenas consultam a situação.
  */
 @Component({
   selector: 'app-secao-garantia',
@@ -29,7 +30,7 @@ export const ROTULOS_GARANTIA: Readonly<Record<string, string>> = {
 
       @if (podeAlterar()) {
         <fieldset class="campo formulario">
-          <legend>{{ atual() === 'PENDENTE' ? 'Verificar garantia' : atual() === 'SIM' ? 'Confirmar garantia' : 'Corrigir garantia' }}</legend>
+          <legend>{{ atual() === 'PENDENTE' ? 'Verificar garantia' : 'Corrigir garantia' }}</legend>
           <div class="opcoes" role="radiogroup" aria-label="Situação da garantia">
             @for (opcao of opcoes; track opcao.codigo) {
               <label class="opcao">
@@ -45,8 +46,8 @@ export const ROTULOS_GARANTIA: Readonly<Record<string, string>> = {
             }
           </div>
           <p class="dica">
-            Em garantia: a OS segue direto para o reparo, sem orçamento e sem cobrança.
-            Fora da garantia: o técnico elabora o orçamento.
+            Em garantia: no orçamento, os serviços saem a R$ 0,00 e as peças são cobradas.
+            A garantia pode ser corrigida até a emissão do orçamento.
           </p>
           <div class="botoes">
             <button
@@ -60,12 +61,10 @@ export const ROTULOS_GARANTIA: Readonly<Record<string, string>> = {
             </button>
           </div>
         </fieldset>
-      } @else if (ehAtendente() && ordem().status === 'RECEBIDA') {
-        <p class="dica">A garantia é verificada com a OS em análise, depois do diagnóstico do técnico.</p>
-      } @else if (!ehAtendente() && atual() === 'PENDENTE' && ['RECEBIDA', 'EM_ANALISE'].includes(ordem().status)) {
-        <p class="dica">Aguardando a verificação da garantia pelo atendente.</p>
-      } @else if (atual() === 'SIM' && ordem().status === 'EM_ANALISE') {
-        <p class="dica">Garantia herdada: aguardando a confirmação pelo atendente para iniciar o reparo em garantia.</p>
+      } @else if (ehTecnico() && ordem().status === 'RECEBIDA') {
+        <p class="dica">A garantia é verificada com a OS em análise, depois do diagnóstico.</p>
+      } @else if (!ehTecnico() && atual() === 'PENDENTE' && ['RECEBIDA', 'EM_ANALISE'].includes(ordem().status)) {
+        <p class="dica">Aguardando a verificação da garantia pelo técnico.</p>
       }
 
       <app-mensagem-acao [mensagem]="mensagem()" />
@@ -83,7 +82,8 @@ export class SecaoGarantia {
   private readonly servico = inject(OrdemServicoService);
 
   readonly ordem = input.required<OrdemServicoDetalhes>();
-  readonly ehAtendente = input(false);
+  /** Técnico logado: só vê OS atribuídas a ele (a API responde 404 para as demais). */
+  readonly ehTecnico = input(false);
   readonly alterado = output<void>();
 
   readonly opcoes = [
@@ -98,11 +98,11 @@ export class SecaoGarantia {
   readonly atual = computed(() => this.ordem().equipamento.garantia_status);
   readonly rotulo = computed(() => ROTULOS_GARANTIA[this.atual()] ?? this.atual());
   readonly tom = computed(() => ({ SIM: 'verde', NAO: 'neutro' })[this.atual()] ?? 'alerta');
-  readonly podeAlterar = computed(() => this.ehAtendente() && this.ordem().status === 'EM_ANALISE');
-  /** Salvar exige uma mudança, exceto confirmar um SIM herdado (que inicia o reparo em garantia). */
+  readonly podeAlterar = computed(() => this.ehTecnico() && this.ordem().status === 'EM_ANALISE');
+  /** Salvar exige uma mudança de situação. */
   readonly podeSalvar = computed(() => {
     const escolha = this.escolha();
-    return !!escolha && (escolha !== this.atual() || escolha === 'SIM');
+    return !!escolha && escolha !== this.atual();
   });
 
   salvar(): void {
@@ -115,13 +115,7 @@ export class SecaoGarantia {
       next: () => {
         this.enviando.set(false);
         this.escolha.set(null);
-        this.mensagem.set({
-          tipo: 'sucesso',
-          texto:
-            garantia === 'SIM'
-              ? 'Garantia registrada: Em garantia. Reparo em garantia iniciado, sem orçamento e sem cobrança.'
-              : `Garantia registrada: ${ROTULOS_GARANTIA[garantia]}.`,
-        });
+        this.mensagem.set({ tipo: 'sucesso', texto: `Garantia registrada: ${ROTULOS_GARANTIA[garantia]}.` });
         this.alterado.emit();
       },
       error: (erro: unknown) => {

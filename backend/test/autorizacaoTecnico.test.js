@@ -43,8 +43,8 @@ function simularOs(teste, gravacoes, statusOs = "RECEBIDA") {
     });
     substituirMetodos(teste, ordemServicoRepository, {
         buscarPorId: async (id) => (Number(id) === 11 ? { id_os: 11, id_item: 3, id_tecnico: 7, status: statusOs } : null),
-        atualizarGarantia: async (id, garantia) => {
-            gravacoes.push({ acao: "garantia", id, garantia });
+        atualizarGarantia: async (id, garantia, idUsuario) => {
+            gravacoes.push({ acao: "garantia", id, garantia, idUsuario });
             return true;
         }
     });
@@ -96,48 +96,59 @@ test("diagnosis: administrator and attendant get 403; only the assigned technici
     assert.equal(gravacoes[0].id_tecnico, 7);
 });
 
+test("diagnosis: empty or invalid content returns 400 and nothing is recorded", async (teste) => {
+    const gravacoes = [];
+    simularOs(teste, gravacoes);
+    const chamar = await iniciarServidor(teste);
+
+    for (const corpo of [{}, { diagnostico: "" }, { diagnostico: "    " }, { diagnostico: 123 }, { diagnostico: "x".repeat(70000) }]) {
+        assert.equal((await chamar("POST", "/ordens-servico/11/execucao", 7, corpo)).status, 400, JSON.stringify(corpo).slice(0, 40));
+    }
+    assert.equal(gravacoes.length, 0);
+});
+
 // ---------- Garantia ----------
 
-// Regra atual: a verificação da garantia é do ATENDENTE (substituiu a regra do técnico atribuído)
-test("warranty: administrator and technicians get 403 on the API; the attendant records it", async (teste) => {
+// Regra (RN05): somente o técnico atribuído verifica e corrige a garantia
+test("warranty: administrator and attendant get 403, another technician 404; the assigned technician records it", async (teste) => {
     const gravacoes = [];
     simularOs(teste, gravacoes, "EM_ANALISE");
     const chamar = await iniciarServidor(teste);
 
-    // Requisição direta à API: técnico (atribuído ou não) e administrador não alteram a garantia
-    for (const id of [1, 7, 8]) {
+    for (const id of [1, 2]) {
         assert.equal((await chamar("PATCH", "/ordens-servico/11/garantia", id, { garantia_status: "SIM" })).status, 403, `perfil ${id}`);
     }
+    // Técnico de outra OS: a OS nem aparece para ele
+    assert.equal((await chamar("PATCH", "/ordens-servico/11/garantia", 8, { garantia_status: "SIM" })).status, 404);
     assert.equal(gravacoes.length, 0);
 
     // Não volta para PENDENTE
-    assert.equal((await chamar("PATCH", "/ordens-servico/11/garantia", 2, { garantia_status: "PENDENTE" })).status, 400);
+    assert.equal((await chamar("PATCH", "/ordens-servico/11/garantia", 7, { garantia_status: "PENDENTE" })).status, 400);
 
-    const resposta = await chamar("PATCH", "/ordens-servico/11/garantia", 2, { garantia_status: "NAO" });
+    const resposta = await chamar("PATCH", "/ordens-servico/11/garantia", 7, { garantia_status: "NAO" });
     assert.equal(resposta.status, 200);
-    assert.deepEqual(gravacoes, [{ acao: "garantia", id: 11, garantia: "NAO" }]);
+    assert.deepEqual(gravacoes, [{ acao: "garantia", id: 11, garantia: "NAO", idUsuario: 7 }]);
 });
 
-test("warranty service refuses everyone but an active attendant, even when called directly", async (teste) => {
+test("warranty service refuses everyone but the assigned technician, even when called directly", async (teste) => {
     const gravacoes = [];
     simularOs(teste, gravacoes, "EM_ANALISE");
 
-    for (const usuario of [USUARIOS[1], USUARIOS[7], USUARIOS[8], undefined]) {
+    for (const usuario of [USUARIOS[1], USUARIOS[2], USUARIOS[8], undefined]) {
         await assert.rejects(ordemServicoService.atualizarGarantia(11, "SIM", usuario), { statusCode: 403 });
     }
-
-    // Token com perfil ATENDENTE, mas o usuário no banco não é atendente ativo
-    await assert.rejects(ordemServicoService.atualizarGarantia(11, "SIM", { id_usuario: 9, perfil: "ATENDENTE" }), { statusCode: 403 });
     assert.equal(gravacoes.length, 0);
 
-    const resultado = await ordemServicoService.atualizarGarantia(11, "SIM", USUARIOS[2]);
-    assert.deepEqual(resultado, { id_os: 11, garantia_status: "SIM", status: "EM_REPARO" });
-    assert.deepEqual(gravacoes, [{ acao: "garantia", id: 11, garantia: "SIM" }]);
+    // A etapa da OS não muda: com SIM a OS segue em análise para o orçamento
+    const resultado = await ordemServicoService.atualizarGarantia(11, "SIM", USUARIOS[7]);
+    assert.deepEqual(resultado, { id_os: 11, garantia_status: "SIM", status: "EM_ANALISE" });
+    assert.deepEqual(gravacoes, [{ acao: "garantia", id: 11, garantia: "SIM", idUsuario: 7 }]);
 });
 
 // ---------- RN03: primeiro diagnóstico muda RECEBIDA → EM_ANALISE ----------
 
-function conexaoSimulada({ falhar } = {}) {
+// OS bloqueada: status e técnico devolvidos pelo SELECT ... FOR UPDATE; execucaoExistente simula diagnóstico já gravado
+function conexaoSimulada({ falhar, statusOs = "RECEBIDA", tecnicoOs = 7, execucaoExistente = false } = {}) {
     const comandos = [];
     return {
         comandos,
@@ -147,11 +158,19 @@ function conexaoSimulada({ falhar } = {}) {
             rollback: async () => comandos.push("ROLLBACK"),
             release: () => comandos.push("RELEASE"),
             execute: async (sql, parametros) => {
-                if (sql.includes("INSERT INTO execucao")) {
+                const texto = sql.replace(/\s+/g, " ").trim();
+                if (texto.startsWith("SELECT status, id_tecnico FROM ordem_servico")) {
+                    comandos.push({ sql: texto, parametros });
+                    return [[{ status: statusOs, id_tecnico: tecnicoOs }]];
+                }
+                if (texto.startsWith("SELECT id_execucao FROM execucao")) {
+                    return [execucaoExistente ? [{ id_execucao: 1 }] : []];
+                }
+                if (texto.includes("INSERT INTO execucao")) {
                     comandos.push("INSERE_EXECUCAO");
-                } else if (sql.includes("UPDATE ordem_servico")) {
+                } else if (texto.includes("UPDATE ordem_servico")) {
                     if (falhar) throw new Error("falha simulada no banco");
-                    comandos.push({ sql: sql.replace(/\s+/g, " ").trim(), parametros });
+                    comandos.push({ sql: texto, parametros });
                 }
                 return [{ affectedRows: 1 }];
             }
@@ -164,14 +183,38 @@ test("RN03: the first diagnosis moves the order from RECEBIDA to EM_ANALISE in t
     substituirMetodos(teste, execucaoRepository.pool, { getConnection: async () => simulada.conexao });
     substituirMetodos(teste, execucaoRepository, { buscarPorOs: async () => ({ id_os: 11 }) });
 
-    await execucaoRepository.criar({ id_os: 11, id_tecnico: 7, diagnostico: "ok", data_inicio: new Date() });
+    await execucaoRepository.criar({ id_os: 11, id_tecnico: 7, id_usuario: 7, diagnostico: "ok", data_inicio: new Date() });
 
-    const [inicio, insercao, atualizacao, fim] = simulada.comandos;
+    const [inicio, bloqueio, insercao, atualizacao, fim] = simulada.comandos;
     assert.equal(inicio, "BEGIN");
+    assert.match(bloqueio.sql, /FOR UPDATE$/); // A3: OS bloqueada antes de qualquer gravação
     assert.equal(insercao, "INSERE_EXECUCAO");
     assert.match(atualizacao.sql, /SET status = 'EM_ANALISE' WHERE id_os = \? AND status = 'RECEBIDA'/);
     assert.deepEqual(atualizacao.parametros, [11]);
     assert.equal(fim, "COMMIT");
+});
+
+test("A3: with the order locked, a reassigned order, a closed order or an existing diagnosis is refused (rollback)", async (teste) => {
+    const casos = [
+        [{ tecnicoOs: 8 }, 403],                       // OS reatribuída durante a operação
+        [{ statusOs: "FINALIZADA" }, 409],
+        [{ statusOs: "ENCERRADA_SEM_REPARO" }, 409],
+        [{ execucaoExistente: true }, 409]
+    ];
+
+    for (const [cenario, statusCode] of casos) {
+        const simulada = conexaoSimulada(cenario);
+        substituirMetodos(teste, execucaoRepository.pool, { getConnection: async () => simulada.conexao });
+
+        await assert.rejects(
+            execucaoRepository.criar({ id_os: 11, id_tecnico: 7, id_usuario: 7, diagnostico: "ok", data_inicio: new Date() }),
+            { statusCode },
+            JSON.stringify(cenario)
+        );
+        assert.ok(!simulada.comandos.includes("INSERE_EXECUCAO"), JSON.stringify(cenario));
+        assert.ok(simulada.comandos.includes("ROLLBACK") && !simulada.comandos.includes("COMMIT"), JSON.stringify(cenario));
+        assert.equal(simulada.comandos.at(-1), "RELEASE");
+    }
 });
 
 test("RN03: a failure while updating the order rolls back the diagnosis", async (teste) => {

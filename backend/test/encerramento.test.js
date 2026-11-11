@@ -39,10 +39,10 @@ const USUARIOS = {
  * Banco simulado da transação de encerramento. Guarda os comandos e
  * devolve a OS, a execução, os orçamentos e os pagamentos da situação informada.
  */
-function bancoEncerramento({ status, comDiagnostico = true, orcamentos = [], pagamentos = [], falharHistorico = false }) {
+function bancoEncerramento({ status, tecnico = 7, comDiagnostico = true, orcamentos = [], pagamentos = [], falharHistorico = false }) {
     const comandos = [];
     const responder = (sql, parametros) => {
-        if (sql.startsWith("SELECT id_os, status FROM ordem_servico")) return [[{ id_os: 11, status }], []];
+        if (sql.startsWith("SELECT id_os, status, id_tecnico FROM ordem_servico")) return [[{ id_os: 11, status, id_tecnico: tecnico }], []];
         if (sql.startsWith("SELECT id_execucao FROM execucao")) return [comDiagnostico ? [{ id_execucao: 3 }] : [], []];
         if (sql.startsWith("SELECT id_orcamento FROM orcamento WHERE id_os = ? AND status = 'PENDENTE' AND data_validade <=")) {
             return [orcamentos.filter((o) => o.status === "PENDENTE" && o.vencido).map(({ id_orcamento }) => ({ id_orcamento })), []];
@@ -89,8 +89,8 @@ function usarBanco(teste, banco) {
     substituirMetodos(teste, pool, { getConnection: async () => banco.conexao });
 }
 
-const encerrar = (tipo, idUsuario = 7) => encerramentoRepository.encerrarSemReparo({
-    id_os: 11, tipo_encerramento: tipo, motivo: "Peça fora de linha", id_usuario: idUsuario
+const encerrar = (tipo, idUsuario = 7, exigirTecnicoAtribuido = idUsuario >= 7) => encerramentoRepository.encerrarSemReparo({
+    id_os: 11, tipo_encerramento: tipo, motivo: "Peça fora de linha", id_usuario: idUsuario, exigirTecnicoAtribuido
 });
 
 // ---------- Regras de etapa e diagnóstico ----------
@@ -136,6 +136,27 @@ test("technical impossibility is allowed up to EM_REPARO and requires the diagno
         usarBanco(teste, banco);
         await assert.rejects(encerrar("IMPOSSIBILIDADE_TECNICA"), { statusCode: 409 }, status);
     }
+});
+
+// ---------- A4: técnico conferido com a OS bloqueada ----------
+
+test("A4: a technician who lost the order while closing gets 403; nothing is recorded (rollback)", async (teste) => {
+    // A OS foi reatribuída ao técnico 8 entre a validação e o bloqueio da linha
+    for (const tipo of ["IMPOSSIBILIDADE_TECNICA", "DESISTENCIA_CLIENTE"]) {
+        const banco = bancoEncerramento({ status: "EM_ANALISE", tecnico: 8 });
+        usarBanco(teste, banco);
+
+        await assert.rejects(encerrar(tipo, 7), { statusCode: 403 }, tipo);
+        assert.match(comandosSql(banco, "SELECT id_os, status, id_tecnico")[0].sql, /FOR UPDATE$/);
+        assert.equal(comandosSql(banco, "UPDATE").length, 0, tipo);
+        assert.equal(eventos(banco).length, 0, tipo);
+        assert.ok(banco.comandos.includes("ROLLBACK") && !banco.comandos.includes("COMMIT"), tipo);
+    }
+
+    // Administrador e atendente não dependem do técnico da OS
+    const banco = bancoEncerramento({ status: "EM_ANALISE", tecnico: 8 });
+    usarBanco(teste, banco);
+    assert.equal((await encerrar("DESISTENCIA_CLIENTE", 2)).status, "ENCERRADA_SEM_REPARO");
 });
 
 // ---------- Gravação: OS, cancelamentos e histórico ----------
@@ -232,11 +253,12 @@ test("service: only the technician closes for technical impossibility; withdrawa
     }
     await ordemServicoService.encerrarSemReparo(11, dados("IMPOSSIBILIDADE_TECNICA"), USUARIOS[7]);
 
-    assert.deepEqual(chamadas.map((c) => [c.tipo_encerramento, c.id_usuario, c.motivo]), [
-        ["DESISTENCIA_CLIENTE", 1, "Cliente levou o aparelho"],
-        ["DESISTENCIA_CLIENTE", 2, "Cliente levou o aparelho"],
-        ["DESISTENCIA_CLIENTE", 7, "Cliente levou o aparelho"],
-        ["IMPOSSIBILIDADE_TECNICA", 7, "Cliente levou o aparelho"]
+    // exigirTecnicoAtribuido: o repository confere o técnico de novo com a OS bloqueada (A4)
+    assert.deepEqual(chamadas.map((c) => [c.tipo_encerramento, c.id_usuario, c.motivo, c.exigirTecnicoAtribuido]), [
+        ["DESISTENCIA_CLIENTE", 1, "Cliente levou o aparelho", false],
+        ["DESISTENCIA_CLIENTE", 2, "Cliente levou o aparelho", false],
+        ["DESISTENCIA_CLIENTE", 7, "Cliente levou o aparelho", true],
+        ["IMPOSSIBILIDADE_TECNICA", 7, "Cliente levou o aparelho", true]
     ]);
 });
 
@@ -258,16 +280,14 @@ test("service: justification required; ORCAMENTO_REJEITADO and unknown types are
 // ---------- RN06: garantia só em EM_ANALISE ----------
 
 test("RN06: warranty can only be set while the order is EM_ANALISE", async (teste) => {
-    // A verificação é do atendente (usuário 2), conferido no banco
-    substituirMetodos(teste, usuarioRepository, { buscarPorId: async (id) => USUARIOS[id] ?? null });
-
+    // A verificação é do técnico atribuído (usuário 7)
     for (const status of ["RECEBIDA", "AGUARDANDO_APROVACAO", "EM_REPARO", "ENCERRADA_SEM_REPARO"]) {
         const gravacoes = [];
         substituirMetodos(teste, ordemServicoRepository, {
             buscarPorId: async () => ({ id_os: 11, id_tecnico: 7, status }),
             atualizarGarantia: async () => gravacoes.push(status)
         });
-        await assert.rejects(ordemServicoService.atualizarGarantia(11, "SIM", USUARIOS[2]), { statusCode: 409 }, status);
+        await assert.rejects(ordemServicoService.atualizarGarantia(11, "SIM", USUARIOS[7]), { statusCode: 409 }, status);
         assert.equal(gravacoes.length, 0);
     }
 
@@ -276,10 +296,10 @@ test("RN06: warranty can only be set while the order is EM_ANALISE", async (test
         buscarPorId: async () => ({ id_os: 11, id_tecnico: 7, status: "EM_ANALISE" }),
         atualizarGarantia: async (id, garantia, idUsuario) => gravacoes.push([id, garantia, idUsuario])
     });
-    await ordemServicoService.atualizarGarantia(11, "NAO", USUARIOS[2]);
-    await ordemServicoService.atualizarGarantia(11, "SIM", USUARIOS[2]); // correção NAO → SIM ainda em análise
-    await assert.rejects(ordemServicoService.atualizarGarantia(11, "PENDENTE", USUARIOS[2]), { statusCode: 400 });
-    assert.deepEqual(gravacoes, [[11, "NAO", 2], [11, "SIM", 2]]);
+    await ordemServicoService.atualizarGarantia(11, "NAO", USUARIOS[7]);
+    await ordemServicoService.atualizarGarantia(11, "SIM", USUARIOS[7]); // correção NAO → SIM ainda em análise
+    await assert.rejects(ordemServicoService.atualizarGarantia(11, "PENDENTE", USUARIOS[7]), { statusCode: 400 });
+    assert.deepEqual(gravacoes, [[11, "NAO", 7], [11, "SIM", 7]]);
 });
 
 // ---------- HTTP ----------

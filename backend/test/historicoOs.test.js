@@ -138,7 +138,7 @@ test("ATRIBUICAO_TECNICO: previous and new technician, with the responsible user
 });
 
 test("ATRIBUICAO_TECNICO and GARANTIA: no change, no update and no event", async (teste) => {
-    const simulada = conexaoFalsa(respostaOs({ ...OS_ATUAL, garantia_status: "SIM" }));
+    const simulada = conexaoFalsa(respostaOs({ ...OS_ATUAL, status: "EM_ANALISE", garantia_status: "SIM" }));
     usarConexao(teste, ordemServicoRepository, simulada);
 
     assert.equal(await ordemServicoRepository.atribuirTecnico(11, 7, 2), true);
@@ -160,55 +160,65 @@ test("GARANTIA: event by the assigned technician with previous and new status", 
     assert.deepEqual(evento.dados_novos, { garantia_status: "NAO" });
 });
 
-// ---------- Reparo em garantia (verificação pelo atendente) ----------
+// ---------- Garantia pelo técnico atribuído (RN05/RN06) ----------
 
-test("GARANTIA SIM in analysis: order goes to EM_REPARO without a quote, with the attendant as responsible", async (teste) => {
-    const simulada = conexaoFalsa(respostaOs({ ...OS_ATUAL, status: "EM_ANALISE" }));
-    usarConexao(teste, ordemServicoRepository, simulada);
+// OS em análise; orcamentoEmitido simula um orçamento já existente para a OS
+const respostaGarantia = (atual, { orcamentoEmitido = false } = {}) => (sql) => {
+    if (sql.startsWith("SELECT id_os, id_tecnico")) return [[{ ...OS_ATUAL, status: "EM_ANALISE", ...atual }], []];
+    if (sql.startsWith("SELECT id_orcamento FROM orcamento")) return [orcamentoEmitido ? [{ id_orcamento: 30 }] : [], []];
+    return undefined;
+};
 
-    assert.equal(await ordemServicoRepository.atualizarGarantia(11, "SIM", 2), true);
+test("GARANTIA PENDENTE → SIM and PENDENTE → NAO: the order stays in analysis (the quote is still required)", async (teste) => {
+    for (const garantia of ["SIM", "NAO"]) {
+        const simulada = conexaoFalsa(respostaGarantia({}));
+        usarConexao(teste, ordemServicoRepository, simulada);
 
-    assert.equal(atualizacoes(simulada.comandos, "UPDATE ordem_servico SET garantia_status").length, 1);
-    assert.equal(atualizacoes(simulada.comandos, "UPDATE ordem_servico SET status = 'EM_REPARO'").length, 1);
-    assert.equal(atualizacoes(simulada.comandos, "INSERT INTO orcamento").length, 0); // nenhum orçamento fictício
-    assert.deepEqual(eventos(simulada.comandos).map((e) => [e.id_usuario, e.tipo_evento, e.dados_anteriores, e.dados_novos]), [
-        [2, "GARANTIA", { garantia_status: "PENDENTE" }, { garantia_status: "SIM" }],
-        [2, "REPARO", { status_os: "EM_ANALISE" }, { status_os: "EM_REPARO", garantia_status: "SIM" }]
-    ]);
-    assert.ok(simulada.comandos.includes("COMMIT"));
+        assert.equal(await ordemServicoRepository.atualizarGarantia(11, garantia, 7), true);
+
+        assert.equal(atualizacoes(simulada.comandos, "UPDATE ordem_servico SET garantia_status").length, 1, garantia);
+        assert.equal(atualizacoes(simulada.comandos, "UPDATE ordem_servico SET status").length, 0, garantia);
+        assert.equal(atualizacoes(simulada.comandos, "INSERT INTO orcamento").length, 0, garantia);
+        assert.deepEqual(eventos(simulada.comandos).map((e) => [e.id_usuario, e.tipo_evento, e.dados_anteriores, e.dados_novos]), [
+            [7, "GARANTIA", { garantia_status: "PENDENTE" }, { garantia_status: garantia }]
+        ], garantia);
+        assert.ok(simulada.comandos.includes("COMMIT"), garantia);
+    }
 });
 
-test("GARANTIA NAO keeps the normal quote flow (order stays in analysis)", async (teste) => {
-    const simulada = conexaoFalsa(respostaOs({ ...OS_ATUAL, status: "EM_ANALISE" }));
-    usarConexao(teste, ordemServicoRepository, simulada);
+test("GARANTIA corrections SIM → NAO and NAO → SIM are recorded with previous and new values", async (teste) => {
+    for (const [anterior, nova] of [["SIM", "NAO"], ["NAO", "SIM"]]) {
+        const simulada = conexaoFalsa(respostaGarantia({ garantia_status: anterior }));
+        usarConexao(teste, ordemServicoRepository, simulada);
 
-    await ordemServicoRepository.atualizarGarantia(11, "NAO", 2);
+        await ordemServicoRepository.atualizarGarantia(11, nova, 7);
 
-    assert.equal(atualizacoes(simulada.comandos, "UPDATE ordem_servico SET status").length, 0);
-    assert.deepEqual(eventos(simulada.comandos).map((e) => e.tipo_evento), ["GARANTIA"]);
+        assert.deepEqual(eventos(simulada.comandos).map((e) => [e.id_usuario, e.tipo_evento, e.descricao, e.dados_anteriores, e.dados_novos]), [
+            [7, "GARANTIA", `Garantia corrigida de ${anterior} para ${nova}.`, { garantia_status: anterior }, { garantia_status: nova }]
+        ]);
+        // A conferência do orçamento e o UPDATE acontecem depois do bloqueio da OS
+        const ordem = simulada.comandos.filter((c) => typeof c === "object").map((c) => c.sql.split(" ").slice(0, 3).join(" "));
+        assert.deepEqual(ordem.slice(0, 3), ["SELECT id_os, id_tecnico,", "SELECT id_orcamento FROM", "UPDATE ordem_servico SET"]);
+    }
 });
 
-test("GARANTIA inherited SIM: the attendant's confirmation starts the warranty repair and is recorded", async (teste) => {
-    const simulada = conexaoFalsa(respostaOs({ ...OS_ATUAL, status: "EM_ANALISE", garantia_status: "SIM" }));
-    usarConexao(teste, ordemServicoRepository, simulada);
+test("GARANTIA is fixed after the quote, outside the analysis stage and for a reassigned order (rollback)", async (teste) => {
+    const casos = [
+        [respostaGarantia({ garantia_status: "SIM" }, { orcamentoEmitido: true }), "NAO", 409], // orçamento já emitido
+        [respostaGarantia({ status: "AGUARDANDO_APROVACAO" }), "SIM", 409],
+        [respostaGarantia({ status: "EM_REPARO" }), "SIM", 409],
+        [respostaGarantia({ id_tecnico: 8 }), "SIM", 403]                                        // OS reatribuída
+    ];
 
-    await ordemServicoRepository.atualizarGarantia(11, "SIM", 2);
+    for (const [responder, garantia, statusCode] of casos) {
+        const simulada = conexaoFalsa(responder);
+        usarConexao(teste, ordemServicoRepository, simulada);
 
-    assert.equal(atualizacoes(simulada.comandos, "UPDATE ordem_servico SET garantia_status").length, 0);
-    assert.equal(atualizacoes(simulada.comandos, "UPDATE ordem_servico SET status = 'EM_REPARO'").length, 1);
-    assert.deepEqual(eventos(simulada.comandos).map((e) => [e.id_usuario, e.tipo_evento, e.descricao]), [
-        [2, "GARANTIA", "Garantia SIM confirmada."],
-        [2, "REPARO", "Reparo em garantia iniciado: equipamento coberto, sem orçamento e sem cobrança."]
-    ]);
-});
-
-test("GARANTIA: an order that left the analysis stage is not changed (rollback)", async (teste) => {
-    const simulada = conexaoFalsa(respostaOs({ ...OS_ATUAL, status: "AGUARDANDO_APROVACAO" }));
-    usarConexao(teste, ordemServicoRepository, simulada);
-
-    assert.equal(await ordemServicoRepository.atualizarGarantia(11, "SIM", 2), false);
-    assert.equal(atualizacoes(simulada.comandos, "UPDATE").length, 0);
-    assert.ok(simulada.comandos.includes("ROLLBACK"));
+        await assert.rejects(ordemServicoRepository.atualizarGarantia(11, garantia, 7), { statusCode });
+        assert.equal(atualizacoes(simulada.comandos, "UPDATE").length, 0);
+        assert.equal(eventos(simulada.comandos).length, 0);
+        assert.ok(simulada.comandos.includes("ROLLBACK") && !simulada.comandos.includes("COMMIT"));
+    }
 });
 
 for (const [garantia, liberada] of [["SIM", true], ["NAO", false]]) {
@@ -286,7 +296,11 @@ test("DIAGNOSTICO edit: only the changed fields are recorded; no change, no even
 
 test("DIAGNOSTICO first record: event includes RECEBIDA → EM_ANALISE only when the status changed", async (teste) => {
     let mudou = 1;
-    const simulada = conexaoFalsa((sql) => (sql.startsWith("UPDATE ordem_servico") ? [{ affectedRows: mudou }, []] : undefined));
+    const simulada = conexaoFalsa((sql) => {
+        if (sql.startsWith("SELECT status, id_tecnico FROM ordem_servico")) return [[{ status: mudou ? "RECEBIDA" : "EM_ANALISE", id_tecnico: 7 }], []];
+        if (sql.startsWith("SELECT id_execucao FROM execucao")) return [[], []];
+        return sql.startsWith("UPDATE ordem_servico") ? [{ affectedRows: mudou }, []] : undefined;
+    });
     usarConexao(teste, execucaoRepository, simulada);
     substituirMetodos(teste, execucaoRepository, { buscarPorOs: async () => ({ id_os: 11 }) });
 
