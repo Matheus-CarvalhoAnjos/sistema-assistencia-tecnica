@@ -4,10 +4,12 @@
 -- Regras do MER v1.4 (RN21): eventos relevantes da OS; registros permanentes, sem edicao ou exclusao
 -- pela interface (correcoes geram novo evento). id_usuario aceita NULL para eventos automaticos.
 -- Nao ha triggers: o backend registra os eventos na camada de servicos.
--- ACESSORIO (decisao D7, P4): inclusao de acessorio depois da abertura. ESTADO DE DESTINO: no banco
--- principal depende da migracao banco/migracoes/20261109_03_historico_evento_acessorio.sql.
--- ABATIMENTO (R1, A6): registro e cancelamento de abatimentos. ESTADO DE DESTINO: depende da
--- migracao banco/migracoes/20261109_04_abatimento_formal.sql.
+-- ACESSORIO (decisao D7, P4): inclusao de acessorio depois da abertura. No banco principal veio da
+-- migracao banco/migracoes/20261109_03_historico_evento_acessorio.sql (aplicada em 09/11/2026).
+-- ABATIMENTO (R1, A6): registro e cancelamento de abatimentos. No banco principal veio da
+-- migracao banco/migracoes/20261109_04_abatimento_formal.sql (aplicada em 09/11/2026).
+-- Collation explicita (igual a do MySQL local; o padrao do TiDB seria utf8mb4_bin) e, so no TiDB,
+-- AUTO_ID_CACHE=1 para IDs sequenciais como no MySQL. O MySQL trata /*T! ... */ como comentario.
 CREATE TABLE IF NOT EXISTS historico_os (
   id_historico INT NOT NULL AUTO_INCREMENT,
   id_os INT NOT NULL,
@@ -22,4 +24,4 @@ CREATE TABLE IF NOT EXISTS historico_os (
   KEY idx_historico_usuario (id_usuario),
   CONSTRAINT fk_historico_os_ordem_servico FOREIGN KEY (id_os) REFERENCES ordem_servico (id_os) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT fk_historico_os_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Linha do tempo de eventos de cada ordem de servico';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */ COMMENT='Linha do tempo de eventos de cada ordem de servico';

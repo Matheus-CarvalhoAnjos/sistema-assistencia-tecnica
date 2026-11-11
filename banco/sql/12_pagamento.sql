@@ -4,6 +4,8 @@
 -- Regras: pagamentos parciais (RN15); data_pagamento e forma_pagamento ficam NULL enquanto PENDENTE;
 -- valor > 0; reembolso integral e unico de pagamento CONFIRMADO, com data, usuario e justificativa (RN16).
 -- Status: PENDENTE, CONFIRMADO, CANCELADO ou REEMBOLSADO. O saldo e calculado no backend (RN14).
+-- Collation explicita (igual a do MySQL local; o padrao do TiDB seria utf8mb4_bin) e, so no TiDB,
+-- AUTO_ID_CACHE=1 para IDs sequenciais como no MySQL. O MySQL trata /*T! ... */ como comentario.
 CREATE TABLE IF NOT EXISTS pagamento (
   id_pagamento INT NOT NULL AUTO_INCREMENT,
   id_os INT NOT NULL,
@@ -18,4 +20,4 @@ CREATE TABLE IF NOT EXISTS pagamento (
   CONSTRAINT fk_pagamento_os FOREIGN KEY (id_os) REFERENCES ordem_servico (id_os) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT fk_pagamento_usuario_reembolso FOREIGN KEY (id_usuario_reembolso) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT chk_pagamento_valor_positivo CHECK (valor > 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Pagamentos de cada ordem de servico';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */ COMMENT='Pagamentos de cada ordem de servico';

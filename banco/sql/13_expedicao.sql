@@ -3,6 +3,8 @@
 -- Seguro para reexecutar (IF NOT EXISTS). Alinhado ao banco real em 09/11/2026.
 -- Regras: no maximo uma expedicao por OS (id_os UNIQUE, RN26); id_usuario preserva quem registrou.
 -- ENVIO: PENDENTE -> EM_TRANSITO -> ENTREGUE. RETIRADA: AGUARDANDO_RETIRADA -> RETIRADO (RN19, validado no backend).
+-- Collation explicita (igual a do MySQL local; o padrao do TiDB seria utf8mb4_bin) e, so no TiDB,
+-- AUTO_ID_CACHE=1 para IDs sequenciais como no MySQL. O MySQL trata /*T! ... */ como comentario.
 CREATE TABLE IF NOT EXISTS expedicao (
   id_expedicao INT NOT NULL AUTO_INCREMENT,
   id_os INT NOT NULL,
@@ -16,4 +18,4 @@ CREATE TABLE IF NOT EXISTS expedicao (
   CONSTRAINT uq_expedicao_os UNIQUE (id_os),
   CONSTRAINT fk_expedicao_os FOREIGN KEY (id_os) REFERENCES ordem_servico (id_os) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT fk_expedicao_usuario FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Devolucao do equipamento ao cliente';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */ COMMENT='Devolucao do equipamento ao cliente';

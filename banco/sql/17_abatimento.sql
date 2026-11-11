@@ -1,9 +1,11 @@
 -- Tabela 17 de 17: abatimento
 -- Fonte: regra R1 (decisoes A1-A8, C1, C2 de 09/11/2026), documentacao/REGRAS_DECISOES_PENDENCIAS.md, secao 3.5.
--- Seguro para reexecutar (IF NOT EXISTS). ESTADO DE DESTINO: no banco principal depende da migracao
--- banco/migracoes/20261109_04_abatimento_formal.sql (executada somente em banco _teste ate a autorizacao).
+-- Seguro para reexecutar (IF NOT EXISTS). No banco principal foi criada pela migracao
+-- banco/migracoes/20261109_04_abatimento_formal.sql (aplicada em 09/11/2026).
 -- Abatimento formal: reduz o total devido sem alterar o orcamento aprovado. Nasce APROVADO; o
 -- cancelamento preserva o registro. Coerencia de status e de OS x orcamento validada no backend.
+-- Collation explicita (igual a do MySQL local; o padrao do TiDB seria utf8mb4_bin) e, so no TiDB,
+-- AUTO_ID_CACHE=1 para IDs sequenciais como no MySQL. O MySQL trata /*T! ... */ como comentario.
 CREATE TABLE IF NOT EXISTS abatimento (
   id_abatimento INT NOT NULL AUTO_INCREMENT,
   id_os INT NOT NULL,
@@ -26,4 +28,4 @@ CREATE TABLE IF NOT EXISTS abatimento (
   CONSTRAINT fk_abatimento_usuario_registro FOREIGN KEY (id_usuario_registro) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT fk_abatimento_usuario_cancelamento FOREIGN KEY (id_usuario_cancelamento) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT chk_abatimento_valor CHECK (valor > 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Abatimentos formais do total devido da OS (R1)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */ COMMENT='Abatimentos formais do total devido da OS (R1)';

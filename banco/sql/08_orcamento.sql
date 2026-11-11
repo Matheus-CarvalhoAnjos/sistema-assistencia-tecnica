@@ -4,6 +4,8 @@
 -- Regras: varios orcamentos por OS, somente um PENDENTE por vez (validado no backend, RN17);
 -- validade de 72 horas (RN10); valor_total armazenado na emissao (RN24); id_tecnico preserva o autor.
 -- Status: PENDENTE, APROVADO, REJEITADO, VENCIDO ou CANCELADO.
+-- Collation explicita (igual a do MySQL local; o padrao do TiDB seria utf8mb4_bin) e, so no TiDB,
+-- AUTO_ID_CACHE=1 para IDs sequenciais como no MySQL. O MySQL trata /*T! ... */ como comentario.
 CREATE TABLE IF NOT EXISTS orcamento (
   id_orcamento INT NOT NULL AUTO_INCREMENT,
   id_os INT NOT NULL,
@@ -17,4 +19,4 @@ CREATE TABLE IF NOT EXISTS orcamento (
   CONSTRAINT fk_orcamento_tecnico FOREIGN KEY (id_tecnico) REFERENCES usuario (id_usuario) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT chk_orcamento_validade CHECK (data_validade > data_emissao),
   CONSTRAINT chk_orcamento_valor CHECK (valor_total >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Orcamentos de cada ordem de servico (historico preservado)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */ COMMENT='Orcamentos de cada ordem de servico (historico preservado)';
