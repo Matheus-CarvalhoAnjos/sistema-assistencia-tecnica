@@ -12,6 +12,12 @@ function normalizar(valor) {
     return valor;
 }
 
+function erroComStatus(mensagem, statusCode) {
+    const erro = new Error(mensagem);
+    erro.statusCode = statusCode;
+    return erro;
+}
+
 class ExecucaoRepository extends BaseRepository {
     constructor() {
         super(pool);
@@ -31,11 +37,39 @@ class ExecucaoRepository extends BaseRepository {
 
     // RN03 (MER v1.4): o primeiro diagnóstico válido cria a execução e muda a OS
     // de RECEBIDA para EM_ANALISE, na mesma transação.
+    // A3: etapa, técnico e diagnóstico existente são conferidos de novo com a OS bloqueada
+    // (SELECT ... FOR UPDATE), para não haver corrida com a troca de técnico ou o encerramento.
     async criar(dados) {
         const conexao = await this.pool.getConnection();
 
         try {
             await conexao.beginTransaction();
+
+            const [ordens] = await conexao.execute(
+                `SELECT status, id_tecnico FROM ordem_servico WHERE id_os = ? FOR UPDATE`,
+                [dados.id_os]
+            );
+
+            if (ordens.length === 0) {
+                throw erroComStatus("Ordem de serviço não encontrada.", 404);
+            }
+
+            if (["FINALIZADA", "ENCERRADA_SEM_REPARO"].includes(ordens[0].status)) {
+                throw erroComStatus("Não é possível alterar a execução de uma ordem encerrada.", 409);
+            }
+
+            if (dados.id_usuario !== undefined && Number(ordens[0].id_tecnico) !== Number(dados.id_usuario)) {
+                throw erroComStatus("Somente o técnico atribuído pode registrar esta execução.", 403);
+            }
+
+            const [existentes] = await conexao.execute(
+                `SELECT id_execucao FROM execucao WHERE id_os = ?`,
+                [dados.id_os]
+            );
+
+            if (existentes.length > 0) {
+                throw erroComStatus("Já existe uma execução técnica para esta ordem de serviço.", 409);
+            }
 
             await conexao.execute(
                 `INSERT INTO execucao (
@@ -49,7 +83,8 @@ class ExecucaoRepository extends BaseRepository {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [
                     dados.id_os,
-                    dados.id_tecnico,
+                    // técnico lido com a OS bloqueada (o mesmo conferido acima)
+                    ordens[0].id_tecnico ?? dados.id_tecnico,
                     dados.diagnostico,
                     dados.laudo_tecnico,
                     dados.resultado,

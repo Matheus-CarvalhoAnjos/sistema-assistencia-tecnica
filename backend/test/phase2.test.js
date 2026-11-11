@@ -76,7 +76,7 @@ test("execution cannot be recorded by a technician not assigned to the order", a
 });
 
 // Garantia confirmada (SIM): o reparo segue sem orçamento; nenhum orçamento (nem de valor zero) é criado
-test("confirmed warranty does not create a quote: no charge for covered parts or services", async (teste) => {
+test("warranty SIM still requires a quote: covered services cost R$ 0,00 and parts keep their price", async (teste) => {
     let dadosCriacao = null;
 
     substituirMetodos(teste, orcamentoRepository, {
@@ -98,14 +98,21 @@ test("confirmed warranty does not create a quote: no charge for covered parts or
         buscarPorId: async () => ({ id_usuario: 7, ativo: 1, perfil: "tecnico" })
     });
 
-    await assert.rejects(orcamentoService.criar(21, {
+    await orcamentoService.criar(21, {
         itens: [
             { tipo_item: "SERVICO", descricao: "Mão de obra", quantidade: 1, valor_unitario: 150 },
             { tipo_item: "PECA", descricao: "Componente", quantidade: 2, valor_unitario: 25 }
         ]
-    }, { id_usuario: 7, perfil: "TECNICO" }), { statusCode: 409 });
+    }, { id_usuario: 7, perfil: "TECNICO" });
 
-    assert.equal(dadosCriacao, null);
+    // O orçamento é criado (e seguirá para a aprovação do cliente): só a peça é cobrada
+    assert.ok(dadosCriacao);
+    assert.deepEqual(
+        dadosCriacao.itens.map((item) => [item.tipo_item, item.quantidade, Number(item.valor_unitario)]),
+        [["SERVICO", 1, 0], ["PECA", 2, 25]]
+    );
+    assert.equal(Number(dadosCriacao.valor_total), 50);
+    assert.equal(dadosCriacao.garantia_status, "SIM");
 });
 
 test("pending warranty prevents quote creation", async (teste) => {

@@ -156,8 +156,6 @@ export class OrdemServicoDetalhePage implements OnInit {
   readonly ehFuncionario = this.podeAtribuir;
   readonly ehTecnico = computed(() => this.auth.possuiPerfil('TECNICO'));
   readonly ehAdministrador = computed(() => this.auth.possuiPerfil('ADMINISTRADOR'));
-  /** Verificação da garantia: somente ATENDENTE (a API aplica a mesma regra). */
-  readonly ehAtendente = computed(() => this.auth.possuiPerfil('ATENDENTE'));
   readonly rotulosEncerramento = ROTULOS_ENCERRAMENTO;
   readonly formatarData = formatarData;
   readonly formatarDataHora = formatarDataHora;

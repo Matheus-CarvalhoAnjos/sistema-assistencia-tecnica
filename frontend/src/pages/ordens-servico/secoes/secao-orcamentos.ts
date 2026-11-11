@@ -102,9 +102,8 @@ export class SecaoOrcamentos {
     const ordem = this.ordem();
     if (!ETAPAS_EMISSAO.includes(ordem.status)) return 'A OS não está em uma etapa que permita orçamento.';
     if (!this.execucao()) return 'Registre o diagnóstico antes de emitir o orçamento.';
-    if (ordem.equipamento.garantia_status === 'PENDENTE') return 'Aguardando a verificação da garantia pelo atendente antes do orçamento.';
-    // Garantia confirmada: reparo em garantia, sem orçamento e sem cobrança (mesma regra da API)
-    if (ordem.equipamento.garantia_status === 'SIM') return 'Equipamento em garantia: o reparo segue sem orçamento e sem cobrança.';
+    if (ordem.equipamento.garantia_status === 'PENDENTE') return 'Verifique a garantia antes de emitir o orçamento.';
+    // Garantia SIM também passa por orçamento: serviços a R$ 0,00 e peças cobradas (mesma regra da API)
     if (this.pendente()) return 'Já existe um orçamento aguardando resposta.';
     return null;
   });

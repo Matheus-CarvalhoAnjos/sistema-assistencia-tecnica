@@ -23,6 +23,17 @@ function normalizarData(valor, nomeCampo) {
     return data;
 }
 
+// Colunas TEXT (diagnóstico, laudo e resultado): até 65.535 bytes. Acima disso o banco
+// recusaria a gravação com erro interno; aqui a resposta é 400, como nos demais módulos.
+const MAX_BYTES_TEXT = 65535;
+
+function limitarTexto(texto, nomeCampo) {
+    if (texto !== null && Buffer.byteLength(texto, "utf8") > MAX_BYTES_TEXT) {
+        throw erroComStatus(`${nomeCampo} excede o tamanho máximo permitido (${MAX_BYTES_TEXT} bytes).`, 400);
+    }
+    return texto;
+}
+
 function normalizarTextoOpcional(valor, nomeCampo) {
     if (valor === null || valor === undefined) {
         return null;
@@ -33,7 +44,7 @@ function normalizarTextoOpcional(valor, nomeCampo) {
     }
 
     const texto = valor.trim();
-    return texto || null;
+    return limitarTexto(texto || null, nomeCampo);
 }
 
 // O diagnóstico é ação exclusiva do técnico atribuído (MER v1.4: "Diagnóstico/garantia:
@@ -109,7 +120,7 @@ class ExecucaoService extends BaseService {
             throw erroComStatus("Já existe uma execução técnica para esta ordem de serviço.", 409);
         }
 
-        const diagnostico = this.validarTexto(dados.diagnostico, "Diagnóstico");
+        const diagnostico = limitarTexto(this.validarTexto(dados.diagnostico, "Diagnóstico"), "Diagnóstico");
         const data_inicio = normalizarData(dados.data_inicio ?? new Date(), "Data de início");
         const data_conclusao = normalizarData(dados.data_conclusao, "Data de conclusão");
 
@@ -146,7 +157,7 @@ class ExecucaoService extends BaseService {
 
         const diagnostico = dados.diagnostico === undefined
             ? existente.diagnostico
-            : this.validarTexto(dados.diagnostico, "Diagnóstico");
+            : limitarTexto(this.validarTexto(dados.diagnostico, "Diagnóstico"), "Diagnóstico");
         const laudo_tecnico = dados.laudo_tecnico === undefined
             ? existente.laudo_tecnico
             : normalizarTextoOpcional(dados.laudo_tecnico, "Laudo técnico");

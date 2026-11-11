@@ -3,6 +3,12 @@ const BaseRepository = require("./BaseRepository");
 const historicoRepository = require("./historicoRepository");
 const OrdemServico = require("../models/ordemServico");
 
+function erroComStatus(mensagem, statusCode) {
+    const erro = new Error(mensagem);
+    erro.statusCode = statusCode;
+    return erro;
+}
+
 class OrdemServicoRepository extends BaseRepository {
     constructor() {
         super(pool);
@@ -342,66 +348,55 @@ class OrdemServicoRepository extends BaseRepository {
     }
 
     /*
-     * Verificação da garantia (pelo atendente). Na mesma transação:
-     * - grava a garantia e o evento GARANTIA com o usuário responsável;
-     * - com SIM e a OS EM_ANALISE, encaminha a OS para EM_REPARO (reparo em garantia),
-     *   sem orçamento e sem cobrança. Uma garantia SIM herdada de OS anterior também
-     *   segue para o reparo quando o atendente a confirma.
-     * NAO mantém o fluxo normal de orçamento. Sem mudança de garantia nem de etapa,
-     * nada é gravado (nenhum evento é inventado).
+     * Verificação/correção da garantia pelo técnico atribuído (RN05/RN06), em uma transação
+     * com a linha da OS bloqueada. Confere de novo, já com o bloqueio:
+     * - a etapa (somente EM_ANALISE);
+     * - o técnico (a OS pode ter sido reatribuída depois da validação do service);
+     * - se já existe orçamento emitido (depois da emissão a garantia fica fixa).
+     * Grava a nova situação e o evento GARANTIA com valor anterior, novo valor e usuário
+     * (a data/hora é a do evento). A etapa da OS não muda. Sem mudança, nada é gravado.
      */
-    async atualizarGarantia(id_os, garantia_status, id_usuario = null) {
+    async atualizarGarantia(id_os, garantia_status, id_usuario) {
         return this._alterarComHistorico(id_os, async (conexao, atual) => {
-            const mudouGarantia = atual.garantia_status !== garantia_status;
-            const iniciaReparoEmGarantia = garantia_status === "SIM" && atual.status === "EM_ANALISE";
+            if (atual.status !== "EM_ANALISE") {
+                throw erroComStatus("A garantia só pode ser definida com a OS em análise, antes da emissão do orçamento.", 409);
+            }
 
-            if (!mudouGarantia && !iniciaReparoEmGarantia) {
+            if (Number(atual.id_tecnico) !== Number(id_usuario)) {
+                throw erroComStatus("Somente o técnico atribuído pode alterar a garantia.", 403);
+            }
+
+            if (atual.garantia_status === garantia_status) {
                 return true;
             }
 
-            // Etapa conferida de novo com a linha bloqueada (o service já validou EM_ANALISE)
-            if (atual.status !== "EM_ANALISE") {
-                return false;
+            // A emissão do orçamento também bloqueia esta linha: não há corrida entre as duas operações
+            const [orcamentos] = await conexao.execute(
+                `SELECT id_orcamento FROM orcamento WHERE id_os = ? LIMIT 1`,
+                [id_os]
+            );
+
+            if (orcamentos.length > 0) {
+                throw erroComStatus("A garantia não pode ser alterada depois da emissão do orçamento.", 409);
             }
 
-            if (mudouGarantia) {
-                await conexao.execute(
-                    `UPDATE ordem_servico
-                     SET garantia_status = ?
-                     WHERE id_os = ?`,
-                    [garantia_status, id_os]
-                );
-            }
+            await conexao.execute(
+                `UPDATE ordem_servico
+                 SET garantia_status = ?
+                 WHERE id_os = ?`,
+                [garantia_status, id_os]
+            );
 
             await historicoRepository.registrar(conexao, {
                 id_os,
                 id_usuario,
                 tipo_evento: "GARANTIA",
-                descricao: mudouGarantia
+                descricao: atual.garantia_status === "PENDENTE"
                     ? `Garantia definida como ${garantia_status}.`
-                    : `Garantia ${garantia_status} confirmada.`,
+                    : `Garantia corrigida de ${atual.garantia_status} para ${garantia_status}.`,
                 dados_anteriores: { garantia_status: atual.garantia_status },
                 dados_novos: { garantia_status }
             });
-
-            if (iniciaReparoEmGarantia) {
-                await conexao.execute(
-                    `UPDATE ordem_servico
-                     SET status = 'EM_REPARO'
-                     WHERE id_os = ?
-                       AND status = 'EM_ANALISE'`,
-                    [id_os]
-                );
-
-                await historicoRepository.registrar(conexao, {
-                    id_os,
-                    id_usuario,
-                    tipo_evento: "REPARO",
-                    descricao: "Reparo em garantia iniciado: equipamento coberto, sem orçamento e sem cobrança.",
-                    dados_anteriores: { status_os: "EM_ANALISE" },
-                    dados_novos: { status_os: "EM_REPARO", garantia_status: "SIM" }
-                });
-            }
 
             return true;
         });

@@ -68,12 +68,24 @@ Fontes: banco `assistencia_tecnica` (inspeção somente leitura), `banco/sql/*.s
 - **Implementado:** `PATCH /api/ordens-servico/:id/garantia` só para ADMINISTRADOR e ATENDENTE; a abertura da solicitação aceita `garantia_status`.
 - **Recomendação:** permitir ao TÉCNICO atribuído (D-OS-5) e gravar PENDENTE na abertura (D-SOL-3).
 - **Aprovação:** **sim**.
+- **Situação atual (11/11/2026):** implementado — somente o **técnico atribuído** à OS altera a garantia (administrador e atendente → 403; técnico de outra OS → 404); administrador e atendente consultam a informação conforme suas permissões. Regras completas na seção [Regras atuais de garantia](#regras-atuais-de-garantia-11112026).
 
 ### D-REG-4 — Garantia SIM ainda exige orçamento e aprovação
 - **Implementado:** com garantia SIM, os itens de SERVIÇO têm valor zero e as PEÇAS continuam cobradas; o fluxo passa por orçamento e resposta do cliente (testado em `phase2.test.js`).
 - **Documentado:** RN08 — "não deve haver cobrança pelo serviço coberto pela garantia" (não diz se o orçamento é dispensado).
 - **Recomendação:** confirmar com a faculdade (D-OS-6). Sem confirmação, manter.
 - **Aprovação:** **sim**.
+- **Situação atual (11/11/2026):** confirmado — com garantia `SIM`, os serviços cobertos não são cobrados (R$ 0,00) e as peças podem ser cobradas normalmente; o fluxo de orçamento e aprovação continua obrigatório.
+
+### Regras atuais de garantia (11/11/2026)
+Consolidam D-REG-3, D-REG-4, D-OS-5 e D-OS-6:
+- A garantia é registrada individualmente por Ordem de Serviço (equipamento atendido nessa OS), com os estados `PENDENTE`, `SIM` e `NAO`.
+- Somente o técnico atribuído à OS pode alterar a garantia. Administrador e atendente podem consultar a informação conforme suas permissões.
+- A verificação ocorre durante `EM_ANALISE`, antes da emissão do orçamento. A garantia pode ser corrigida enquanto a OS estiver em `EM_ANALISE`, até a emissão do orçamento; depois da emissão do orçamento, fica fixa.
+- Depois de sair de `PENDENTE`, a garantia não pode voltar para esse estado. É permitido corrigir `SIM` para `NAO` e `NAO` para `SIM`.
+- Cada alteração registra, no histórico da OS, data, horário, usuário responsável e os valores anterior e novo.
+- Uma nova OS herda a garantia registrada anteriormente para o equipamento, quando existir.
+- Quando a garantia for `SIM`, os serviços cobertos não são cobrados, mas as peças podem ser cobradas normalmente. O fluxo de orçamento e aprovação continua obrigatório.
 
 ### D-REG-5 — Encerrar OS sem orçamento
 - **Documentado:** MER prevê `motivo_encerramento` "inclusive sem reparo"; Especificações deixam pendente o fluxo de encerramento.

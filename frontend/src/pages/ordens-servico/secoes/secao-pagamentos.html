@@ -18,11 +18,7 @@
       <div><dt>Saldo restante</dt><dd>{{ formatarMoeda(r.saldo_devedor) }}</dd></div>
     </dl>
     @if (!r.tem_orcamento_aprovado) {
-      @if (ordem().equipamento.garantia_status === 'SIM') {
-        <p class="dica">Reparo coberto pela garantia: sem orçamento e sem cobrança.</p>
-      } @else {
-        <p class="dica">Pagamentos ficam disponíveis depois que o cliente aprova um orçamento.</p>
-      }
+      <p class="dica">Pagamentos ficam disponíveis depois que o cliente aprova um orçamento.</p>
     }
     @switch (semValorParaRegistro()) {
       @case ('quitado') { <p class="dica" id="dica-saldo-quitado">Saldo quitado: não há valor para registrar um novo pagamento.</p> }

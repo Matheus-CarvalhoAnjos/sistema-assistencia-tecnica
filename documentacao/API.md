@@ -45,7 +45,7 @@ Base: `http://localhost:3000/api`. Todas as rotas, exceto o login, exigem `Autho
 | GET | `/ordens-servico/:id` | todos (TEC atribuído) | Detalhes, inclui `tipo_encerramento` |
 | POST | `/ordens-servico` | ADM, ATD | `{ id_item, id_tecnico? }`. Nova OS para um equipamento sem OS ativa; **herda a garantia** da OS anterior do mesmo item (RN05) |
 | PATCH | `/ordens-servico/:id/tecnico` | ADM, ATD | `{ id_tecnico }`, somente técnico ativo; OS encerrada → 409 |
-| PATCH | `/ordens-servico/:id/garantia` | TEC atribuído | `{ garantia_status: "SIM" \| "NAO" }`, **somente em EM_ANALISE** (RN06); PENDENTE → 400 |
+| PATCH | `/ordens-servico/:id/garantia` | TEC atribuído (ADM/ATD → 403; outro TEC → 404) | `{ garantia_status: "SIM" \| "NAO" }`, **somente em EM_ANALISE** e antes da emissão do orçamento (RN06; depois → 409); correções SIM ↔ NAO ficam no histórico; PENDENTE → 400. A etapa da OS não muda: com SIM o atendimento segue para o orçamento (serviços a R$ 0,00, peças cobradas) |
 | PATCH | `/ordens-servico/:id/encerramento` | ADM, ATD, TEC atribuído | `{ tipo_encerramento, motivo_encerramento }`. `IMPOSSIBILIDADE_TECNICA`: só TEC, exige diagnóstico, até EM_REPARO. `DESISTENCIA_CLIENTE`: em RECEBIDA, EM_ANALISE ou AGUARDANDO_APROVACAO. Cancela orçamentos e pagamentos PENDENTE. Resposta: `{ encerramento: { orcamentos_cancelados, pagamentos_cancelados }, ordem }` |
 | GET | `/ordens-servico/:id/historico` | todos (TEC atribuído) | Eventos em ordem cronológica (RN21). Somente leitura. Para o técnico, os eventos `PAGAMENTO` são omitidos |
 | PATCH | `/ordens-servico/:id/acessorios/:id_acessorio_recebido` | todos (TEC atribuído) | Mesmas regras do `PATCH /acessorios-recebidos/:id`, com a OS da URL; acessório de outro equipamento → 404 |

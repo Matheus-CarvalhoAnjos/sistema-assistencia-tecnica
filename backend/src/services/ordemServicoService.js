@@ -331,7 +331,8 @@ class OrdemServicoService extends BaseService {
             id_os: idOs,
             tipo_encerramento: tipo,
             motivo,
-            id_usuario: Number(usuario.id_usuario)
+            id_usuario: Number(usuario.id_usuario),
+            exigirTecnicoAtribuido: perfil === "TECNICO"
         });
     }
 
@@ -346,21 +347,15 @@ class OrdemServicoService extends BaseService {
             : eventos;
     }
 
-    // Garantia: verificada pelo ATENDENTE (regra que substitui a do técnico atribuído).
-    // Não volta para PENDENTE (só SIM ou NAO são aceitos). Com SIM, o repository
-    // encaminha a OS para o reparo em garantia, sem orçamento e sem cobrança.
+    // Garantia (RN05/RN06): somente o técnico atribuído verifica e corrige.
+    // PENDENTE → SIM/NAO e SIM ↔ NAO; nunca volta para PENDENTE. Só com a OS em EM_ANALISE
+    // e enquanto nenhum orçamento tiver sido emitido (depois disso fica fixa).
+    // A garantia SIM não dispensa o orçamento: os serviços cobertos saem a R$ 0,00.
     async atualizarGarantia(id_os, garantia_status, usuario) {
         const idOs = this.validarIdPositivo(id_os, "ID da ordem de serviço");
 
-        if (!usuario || String(usuario.perfil).toUpperCase() !== "ATENDENTE") {
-            throw erroComStatus("Somente o atendente pode registrar a verificação da garantia.", 403);
-        }
-
-        // Confere no banco: atendente ativo e com perfil ATENDENTE (não confia só no token)
-        const atendente = await usuarioRepository.buscarPorId(Number(usuario.id_usuario));
-
-        if (!atendente || !atendente.ativo || String(atendente.perfil).toUpperCase() !== "ATENDENTE") {
-            throw erroComStatus("Atendente não encontrado, inativo ou sem autorização.", 403);
+        if (!ehTecnico(usuario)) {
+            throw erroComStatus("Somente o técnico atribuído pode alterar a garantia.", 403);
         }
 
         if (!["SIM", "NAO"].includes(garantia_status)) {
@@ -377,6 +372,11 @@ class OrdemServicoService extends BaseService {
             throw erro;
         }
 
+        // Chamada direta ao service (sem o middleware): técnico de outra OS não altera
+        if (!podeAcessar(ordemServico, usuario)) {
+            throw erroComStatus("Somente o técnico atribuído pode alterar a garantia.", 403);
+        }
+
         // RN06: a garantia é verificada durante EM_ANALISE (depois do diagnóstico e antes do orçamento)
         if (ordemServico.status !== "EM_ANALISE") {
             const erro = new Error("A garantia só pode ser definida com a OS em análise, antes da emissão do orçamento.");
@@ -384,17 +384,14 @@ class OrdemServicoService extends BaseService {
             throw erro;
         }
 
-        const atualizado = await ordemServicoRepository.atualizarGarantia(idOs, garantia_status, Number(usuario.id_usuario));
+        // Etapa, técnico e orçamentos são conferidos de novo no repository, com a OS bloqueada
+        await ordemServicoRepository.atualizarGarantia(idOs, garantia_status, Number(usuario.id_usuario));
 
-        if (!atualizado) {
-            throw erroComStatus("A ordem de serviço mudou de etapa durante a verificação. Atualize e tente novamente.", 409);
-        }
-
-        // Com SIM a OS segue para EM_REPARO (reparo em garantia); com NAO continua EM_ANALISE (orçamento normal)
+        // A etapa não muda: com SIM ou NAO a OS segue em EM_ANALISE para o orçamento
         return {
             id_os: idOs,
             garantia_status,
-            status: garantia_status === "SIM" ? "EM_REPARO" : ordemServico.status
+            status: ordemServico.status
         };
     }
 }

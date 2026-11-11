@@ -260,19 +260,20 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         assert.equal((await api("GET", `/ordens-servico/${ids.os1}`, "tecnico2")).status, 404);
     });
 
-    await t.test("6. diagnóstico (RECEBIDA → EM_ANALISE) e garantia verificada pelo atendente", async () => {
+    await t.test("6. diagnóstico (RECEBIDA → EM_ANALISE) e garantia verificada pelo técnico atribuído", async () => {
         const corpo = { diagnostico: "Placa-mãe com oxidação" };
         assert.equal((await api("POST", `/ordens-servico/${ids.os1}/execucao`, "admin", corpo)).status, 403);
         assert.equal((await api("POST", `/ordens-servico/${ids.os1}/execucao`, "tecnico2", corpo)).status, 403);
         assert.equal((await api("POST", `/ordens-servico/${ids.os1}/execucao`, "tecnico", corpo)).status, 201);
         assert.equal((await linha("SELECT status FROM ordem_servico WHERE id_os = ?", [ids.os1])).status, "EM_ANALISE");
 
-        // Técnico (atribuído ou não) e administrador não alteram a garantia, nem por requisição direta
-        for (const quem of ["tecnico", "tecnico2", "admin"]) {
+        // Administrador e atendente não alteram a garantia; outro técnico nem enxerga a OS
+        for (const quem of ["admin", "atendente"]) {
             assert.equal((await api("PATCH", `/ordens-servico/${ids.os1}/garantia`, quem, { garantia_status: "NAO" })).status, 403, quem);
         }
-        assert.equal((await api("PATCH", `/ordens-servico/${ids.os1}/garantia`, "atendente", { garantia_status: "PENDENTE" })).status, 400);
-        assert.equal((await api("PATCH", `/ordens-servico/${ids.os1}/garantia`, "atendente", { garantia_status: "NAO" })).status, 200);
+        assert.equal((await api("PATCH", `/ordens-servico/${ids.os1}/garantia`, "tecnico2", { garantia_status: "NAO" })).status, 404);
+        assert.equal((await api("PATCH", `/ordens-servico/${ids.os1}/garantia`, "tecnico", { garantia_status: "PENDENTE" })).status, 400);
+        assert.equal((await api("PATCH", `/ordens-servico/${ids.os1}/garantia`, "tecnico", { garantia_status: "NAO" })).status, 200);
         assert.equal((await linha("SELECT garantia_status FROM ordem_servico WHERE id_os = ?", [ids.os1])).garantia_status, "NAO");
     });
 
@@ -370,7 +371,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
 
     await t.test("10. encerramento sem reparo (orçamento rejeitado) e devolução por RETIRADA", async () => {
         assert.equal((await api("POST", `/ordens-servico/${ids.os2}/execucao`, "tecnico", { diagnostico: "Fusor danificado" })).status, 201);
-        assert.equal((await api("PATCH", `/ordens-servico/${ids.os2}/garantia`, "atendente", { garantia_status: "NAO" })).status, 200);
+        assert.equal((await api("PATCH", `/ordens-servico/${ids.os2}/garantia`, "tecnico", { garantia_status: "NAO" })).status, 200);
 
         const orc = await api("POST", `/ordens-servico/${ids.os2}/orcamentos`, "tecnico", {
             itens: [
@@ -432,7 +433,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
             ["CRIACAO", "atendente"],
             ["ATRIBUICAO_TECNICO", "atendente"],
             ["DIAGNOSTICO", "tecnico"],
-            ["GARANTIA", "atendente"],
+            ["GARANTIA", "tecnico"],
             ["ORCAMENTO", "tecnico"],
             ["ORCAMENTO", "atendente"],
             ["REPARO", "atendente"],
@@ -465,7 +466,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         const os2 = await historicoDe(ids.os2);
         assert.deepEqual(os2.map((h) => [h.tipo_evento, h.quem]), [
             ["CRIACAO", "atendente"], ["ATRIBUICAO_TECNICO", "atendente"], ["DIAGNOSTICO", "tecnico"],
-            ["GARANTIA", "atendente"], ["ORCAMENTO", "tecnico"], ["ORCAMENTO", "atendente"],
+            ["GARANTIA", "tecnico"], ["ORCAMENTO", "tecnico"], ["ORCAMENTO", "atendente"],
             ["ENCERRAMENTO", "atendente"], ["EXPEDICAO", "atendente"], ["EXPEDICAO", "atendente"]
         ]);
         const encerrada = await linha("SELECT tipo_encerramento, id_usuario_encerramento FROM ordem_servico WHERE id_os = ?", [ids.os2]);
@@ -508,7 +509,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         assert.equal(Number((await linha("SELECT COUNT(*) AS n FROM historico_os")).n), eventosAntes);
     });
 
-    await t.test("GARANTIA: pendente bloqueia o orçamento; SIM segue para o reparo sem orçamento e sem cobrança", async () => {
+    await t.test("GARANTIA: pendente bloqueia o orçamento; técnico corrige SIM ↔ NAO; SIM passa por orçamento com serviço a R$ 0,00", async () => {
         const nova = await api("POST", "/solicitacoes", "atendente", {
             id_cliente: ids.cliente, descricao_inicial: "Equipamento em garantia",
             itens: [{ tipo_equipamento: "Notebook", marca: "Dell", modelo: "G", estado_fisico: "ok" }]
@@ -524,38 +525,52 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         assert.equal((await api("POST", `/ordens-servico/${osG}/orcamentos`, "tecnico", { itens })).status, 409);
         assert.equal((await statusOs()).status, "EM_ANALISE");
 
-        // Técnico não confirma a garantia; o atendente confirma e a OS vai direto para EM_REPARO
-        assert.equal((await api("PATCH", `/ordens-servico/${osG}/garantia`, "tecnico", { garantia_status: "SIM" })).status, 403);
-        const g = await api("PATCH", `/ordens-servico/${osG}/garantia`, "atendente", { garantia_status: "SIM" });
+        // Somente o técnico atribuído altera a garantia; a etapa da OS não muda
+        for (const quem of ["admin", "atendente"]) {
+            assert.equal((await api("PATCH", `/ordens-servico/${osG}/garantia`, quem, { garantia_status: "SIM" })).status, 403, quem);
+        }
+        const g = await api("PATCH", `/ordens-servico/${osG}/garantia`, "tecnico", { garantia_status: "SIM" });
         assert.equal(g.status, 200);
-        assert.equal(g.corpo.garantia.status, "EM_REPARO");
-        assert.deepEqual({ ...(await statusOs()) }, { status: "EM_REPARO", garantia_status: "SIM" });
+        assert.equal(g.corpo.garantia.status, "EM_ANALISE");
+        assert.deepEqual({ ...(await statusOs()) }, { status: "EM_ANALISE", garantia_status: "SIM" });
 
-        // Nenhum orçamento (nem de valor zero) e nenhuma cobrança
-        assert.equal((await api("POST", `/ordens-servico/${osG}/orcamentos`, "tecnico", { itens })).status, 409);
-        assert.equal(Number((await linha("SELECT COUNT(*) AS n FROM orcamento WHERE id_os = ?", [osG])).n), 0);
-        assert.equal((await api("POST", `/ordens-servico/${osG}/pagamentos`, "atendente", { valor: 10, forma_pagamento: "PIX" })).status, 409);
+        // Correções ainda em análise: SIM → NAO → SIM
+        assert.equal((await api("PATCH", `/ordens-servico/${osG}/garantia`, "tecnico", { garantia_status: "NAO" })).status, 200);
+        assert.equal((await api("PATCH", `/ordens-servico/${osG}/garantia`, "tecnico", { garantia_status: "SIM" })).status, 200);
+        assert.equal((await api("PATCH", `/ordens-servico/${osG}/garantia`, "tecnico", { garantia_status: "PENDENTE" })).status, 400);
+
+        // Garantia SIM passa por orçamento: o serviço sai a R$ 0,00 e a peça é cobrada
+        const orc = await api("POST", `/ordens-servico/${osG}/orcamentos`, "tecnico", {
+            itens: [...itens, { tipo_item: "SERVICO", descricao: "Troca do teclado", quantidade: 1, valor_unitario: 120 }]
+        });
+        assert.equal(orc.status, 201);
+        assert.equal(Number(orc.corpo.orcamento.valor_total), 200);
+        const itensGravados = await linhas("SELECT tipo_item, valor_unitario FROM item_orcamento WHERE id_orcamento = ? ORDER BY id_item_orcamento", [orc.corpo.orcamento.id_orcamento]);
+        assert.deepEqual(itensGravados.map((i) => [i.tipo_item, Number(i.valor_unitario)]), [["PECA", 200], ["SERVICO", 0]]);
+
+        // Depois da emissão do orçamento a garantia fica fixa
+        assert.equal((await api("PATCH", `/ordens-servico/${osG}/garantia`, "tecnico", { garantia_status: "NAO" })).status, 409);
+
+        // Aprovação do cliente registrada pelo atendente; a peça é cobrada normalmente
+        assert.equal((await api("PATCH", `/orcamentos/${orc.corpo.orcamento.id_orcamento}/resposta`, "atendente", { decisao: "APROVADO" })).status, 200);
+        assert.equal((await statusOs()).status, "EM_REPARO");
         const pagamentos = await api("GET", `/ordens-servico/${osG}/pagamentos`, "atendente");
-        assert.equal(pagamentos.corpo.resumo.saldo_devedor, 0);
-        // Fora de EM_ANALISE a garantia não muda mais
-        assert.equal((await api("PATCH", `/ordens-servico/${osG}/garantia`, "atendente", { garantia_status: "NAO" })).status, 409);
+        assert.equal(pagamentos.corpo.resumo.saldo_devedor, 200);
 
-        // Técnico consulta a garantia e conclui o reparo; a devolução é liberada sem quitação
+        // Técnico consulta a garantia e conclui o reparo
         const detalhe = await api("GET", `/ordens-servico/${osG}`, "tecnico");
         assert.equal(detalhe.corpo.equipamento.garantia_status, "SIM");
         assert.equal((await api("PATCH", `/ordens-servico/${osG}/execucao`, "tecnico", { laudo_tecnico: "Teclado substituído em garantia", data_conclusao: new Date(Date.now() + 1000).toISOString() })).status, 200);
         assert.equal((await api("PATCH", `/ordens-servico/${osG}/execucao/concluir`, "tecnico")).status, 200);
-        assert.equal((await api("POST", `/ordens-servico/${osG}/expedicao`, "atendente", { forma_entrega: "RETIRADA" })).status, 201);
-        assert.equal((await api("PATCH", `/expedicoes/${osG}/status`, "atendente", { status: "RETIRADO" })).status, 200);
-        assert.equal((await statusOs()).status, "FINALIZADA");
 
-        // Histórico: atendente responsável pela verificação e pelo início do reparo em garantia
-        const historico = await linhas("SELECT tipo_evento, id_usuario, dados_novos FROM historico_os WHERE id_os = ? ORDER BY data_evento, id_historico", [osG]);
-        const garantia = historico.find((h) => h.tipo_evento === "GARANTIA");
-        assert.equal(garantia.id_usuario, ids.atendente);
-        const reparo = historico.find((h) => h.tipo_evento === "REPARO");
-        assert.equal(reparo.id_usuario, ids.atendente);
-        assert.equal(historico.filter((h) => ["ORCAMENTO", "PAGAMENTO"].includes(h.tipo_evento)).length, 0);
+        // Histórico: cada alteração da garantia com valor anterior, novo valor e o técnico responsável
+        const historico = await linhas("SELECT tipo_evento, id_usuario, dados_anteriores, dados_novos FROM historico_os WHERE id_os = ? ORDER BY data_evento, id_historico", [osG]);
+        const garantias = historico.filter((h) => h.tipo_evento === "GARANTIA");
+        assert.deepEqual(garantias.map((h) => [h.id_usuario, h.dados_anteriores.garantia_status, h.dados_novos.garantia_status]), [
+            [ids.tecnico, "PENDENTE", "SIM"],
+            [ids.tecnico, "SIM", "NAO"],
+            [ids.tecnico, "NAO", "SIM"]
+        ]);
     });
 
     await t.test("14. encerramento sem reparo: desistência, impossibilidade técnica e cancelamentos (RN06, RN07, RN08, RN12, RN13, RN22)", async () => {
@@ -576,7 +591,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
 
         // OS A — RECEBIDA: garantia antes da análise é recusada (RN06); impossibilidade exige diagnóstico;
         // desistência não exige diagnóstico
-        assert.equal((await api("PATCH", `/ordens-servico/${osA}/garantia`, "atendente", { garantia_status: "SIM" })).status, 409);
+        assert.equal((await api("PATCH", `/ordens-servico/${osA}/garantia`, "tecnico", { garantia_status: "SIM" })).status, 409);
         assert.equal((await encerrar(osA, "tecnico", "IMPOSSIBILIDADE_TECNICA")).status, 409);
         assert.equal((await encerrar(osA, "atendente", "DESISTENCIA_CLIENTE", "   ")).status, 400);
         assert.equal((await encerrar(osA, "tecnico2", "DESISTENCIA_CLIENTE")).status, 404);
@@ -593,13 +608,13 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
 
         // OS B — orçamento PENDENTE é cancelado na desistência registrada pelo técnico
         assert.equal((await api("POST", `/ordens-servico/${osB}/execucao`, "tecnico", { diagnostico: "Bateria" })).status, 201);
-        assert.equal((await api("PATCH", `/ordens-servico/${osB}/garantia`, "tecnico", { garantia_status: "NAO" })).status, 403);
-        assert.equal((await api("PATCH", `/ordens-servico/${osB}/garantia`, "atendente", { garantia_status: "NAO" })).status, 200);
+        assert.equal((await api("PATCH", `/ordens-servico/${osB}/garantia`, "atendente", { garantia_status: "NAO" })).status, 403);
+        assert.equal((await api("PATCH", `/ordens-servico/${osB}/garantia`, "tecnico", { garantia_status: "NAO" })).status, 200);
         const orcB = await api("POST", `/ordens-servico/${osB}/orcamentos`, "tecnico", {
             itens: [{ tipo_item: "PECA", descricao: "Bateria", quantidade: 1, valor_unitario: 90 }]
         });
         assert.equal(orcB.status, 201);
-        assert.equal((await api("PATCH", `/ordens-servico/${osB}/garantia`, "atendente", { garantia_status: "SIM" })).status, 409); // após o orçamento
+        assert.equal((await api("PATCH", `/ordens-servico/${osB}/garantia`, "tecnico", { garantia_status: "SIM" })).status, 409); // após o orçamento
         const b = await encerrar(osB, "tecnico", "DESISTENCIA_CLIENTE", "Cliente não quis aguardar");
         assert.equal(b.status, 200);
         assert.deepEqual(b.corpo.encerramento.orcamentos_cancelados, [orcB.corpo.orcamento.id_orcamento]);
@@ -609,7 +624,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         // OS C — EM_REPARO: desistência recusada; impossibilidade só pelo técnico; pagamento PENDENTE é
         // cancelado e o CONFIRMADO preservado; orçamento APROVADO preservado; reembolso continua possível
         assert.equal((await api("POST", `/ordens-servico/${osC}/execucao`, "tecnico", { diagnostico: "Leitor" })).status, 201);
-        assert.equal((await api("PATCH", `/ordens-servico/${osC}/garantia`, "atendente", { garantia_status: "NAO" })).status, 200);
+        assert.equal((await api("PATCH", `/ordens-servico/${osC}/garantia`, "tecnico", { garantia_status: "NAO" })).status, 200);
         const orcC = await api("POST", `/ordens-servico/${osC}/orcamentos`, "tecnico", {
             itens: [{ tipo_item: "SERVICO", descricao: "Troca do leitor", quantidade: 1, valor_unitario: 150 }]
         });
@@ -879,7 +894,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         const passos = [
             ["PATCH", `/ordens-servico/${osD}/tecnico`, "atendente", { id_tecnico: ids.tecnico }],
             ["POST", `/ordens-servico/${osD}/execucao`, "tecnico", { diagnostico: "Fonte" }],
-            ["PATCH", `/ordens-servico/${osD}/garantia`, "atendente", { garantia_status: "NAO" }]
+            ["PATCH", `/ordens-servico/${osD}/garantia`, "tecnico", { garantia_status: "NAO" }]
         ];
         for (const [m, u, q, c] of passos) assert.ok([200, 201].includes((await api(m, u, q, c)).status), u);
         const orc = await api("POST", `/ordens-servico/${osD}/orcamentos`, "tecnico", { itens: [{ tipo_item: "SERVICO", descricao: "Troca", quantidade: 1, valor_unitario: 10 }] });
@@ -925,7 +940,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         for (const [m, u, quem, corpo] of [
             ["PATCH", `/ordens-servico/${osQ}/tecnico`, "atendente", { id_tecnico: ids.tecnico }],
             ["POST", `/ordens-servico/${osQ}/execucao`, "tecnico", { diagnostico: "Placa" }],
-            ["PATCH", `/ordens-servico/${osQ}/garantia`, "atendente", { garantia_status: "NAO" }]
+            ["PATCH", `/ordens-servico/${osQ}/garantia`, "tecnico", { garantia_status: "NAO" }]
         ]) assert.ok([200, 201].includes((await api(m, u, quem, corpo)).status), u);
         const orc = await api("POST", `/ordens-servico/${osQ}/orcamentos`, "tecnico", { itens: [{ tipo_item: "PECA", descricao: "Placa", quantidade: 1, valor_unitario: 90 }] });
         assert.equal((await api("PATCH", `/orcamentos/${orc.corpo.orcamento.id_orcamento}/resposta`, "atendente", { decisao: "APROVADO" })).status, 200);
@@ -1015,7 +1030,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         for (const [m, u, quem, corpo] of [
             ["PATCH", `/ordens-servico/${osR}/tecnico`, "atendente", { id_tecnico: ids.tecnico }],
             ["POST", `/ordens-servico/${osR}/execucao`, "tecnico", { diagnostico: "Fusor" }],
-            ["PATCH", `/ordens-servico/${osR}/garantia`, "atendente", { garantia_status: "NAO" }]
+            ["PATCH", `/ordens-servico/${osR}/garantia`, "tecnico", { garantia_status: "NAO" }]
         ]) assert.ok([200, 201].includes((await api(m, u, quem, corpo)).status), u);
         const orc = await api("POST", `/ordens-servico/${osR}/orcamentos`, "tecnico", { itens: [{ tipo_item: "PECA", descricao: "Fusor", quantidade: 1, valor_unitario: 100 }] });
         assert.equal((await api("PATCH", `/orcamentos/${orc.corpo.orcamento.id_orcamento}/resposta`, "atendente", { decisao: "APROVADO" })).status, 200);
@@ -1077,7 +1092,7 @@ test(`integração real no banco "${BANCO_TESTE}"`, async (t) => {
         for (const [m, u, quem, corpo] of [
             ["PATCH", `/ordens-servico/${os}/tecnico`, "atendente", { id_tecnico: ids.tecnico }],
             ["POST", `/ordens-servico/${os}/execucao`, "tecnico", { diagnostico: "Defeito" }],
-            ["PATCH", `/ordens-servico/${os}/garantia`, "atendente", { garantia_status: "NAO" }]
+            ["PATCH", `/ordens-servico/${os}/garantia`, "tecnico", { garantia_status: "NAO" }]
         ]) assert.ok([200, 201].includes((await api(m, u, quem, corpo)).status), u);
         const orc = await api("POST", `/ordens-servico/${os}/orcamentos`, "tecnico", { itens: [{ tipo_item: "PECA", descricao: "Peça", quantidade: 1, valor_unitario: valor }] });
         assert.equal((await api("PATCH", `/orcamentos/${orc.corpo.orcamento.id_orcamento}/resposta`, "atendente", { decisao: "APROVADO" })).status, 200);

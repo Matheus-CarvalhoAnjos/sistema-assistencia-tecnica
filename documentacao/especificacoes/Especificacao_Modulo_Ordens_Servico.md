@@ -2,11 +2,20 @@
 
 > **Atualização 09/11/2026:** este documento é histórico. A situação atual (regras do MER v1.4, decisões resolvidas, pendências e o que está implementado) está em [../REGRAS_DECISOES_PENDENCIAS.md](../REGRAS_DECISOES_PENDENCIAS.md), e a API em [../API.md](../API.md).
 
+> **Atualização 11/11/2026 — regras atuais de garantia (resolvem D-OS-5 e D-OS-6).** Onde o texto abaixo disser outra coisa sobre garantia, valem estas regras:
+> - A garantia é registrada individualmente por Ordem de Serviço (equipamento atendido nessa OS), com os estados `PENDENTE`, `SIM` e `NAO`.
+> - Somente o **técnico atribuído** à OS altera a garantia (`PATCH /api/ordens-servico/:id/garantia`; administrador e atendente → 403; técnico de outra OS → 404). Administrador e atendente consultam a informação conforme suas permissões.
+> - A verificação ocorre durante `EM_ANALISE`, antes da emissão do orçamento. A garantia pode ser corrigida enquanto a OS estiver em `EM_ANALISE`, até a emissão do orçamento; depois da emissão do orçamento, fica fixa.
+> - Depois de sair de `PENDENTE`, não volta para esse estado. É permitido corrigir `SIM` para `NAO` e `NAO` para `SIM`.
+> - Cada alteração fica no histórico da OS com data, horário, usuário responsável e valores anterior e novo.
+> - Uma nova OS herda a garantia registrada anteriormente para o equipamento, quando existir.
+> - Com garantia `SIM`, os serviços cobertos não são cobrados (R$ 0,00) e as peças podem ser cobradas normalmente. O fluxo de orçamento e aprovação continua obrigatório.
+
 **Projeto:** Sistema de Assistência Técnica · **Versão:** 1.0 · **Data:** 07/11/2026
 **Situação do documento:** proposta para aprovação. Nada aqui foi implementado.
 
 > **Atualização 07/11/2026 — módulo implementado (consulta e atribuição).** Backend: `GET /api/ordens-servico` com dados do cliente e filtros `status`, `id_tecnico`, `sem_tecnico`, `busca`, `data_inicio`, `data_fim` (técnico: sempre as próprias OS, sem `id_solicitacao`); `GET /api/ordens-servico/:id` devolve os detalhes da seção 7.4; `PATCH /:id/tecnico` devolve os detalhes e recusa OS encerrada com 409 (A6); `GET /api/usuarios?perfil=TECNICO&ativo=1` (A5); descrição dos acessórios recebidos mantida (ACR-3). Frontend: dashboard (Início) com dados reais, indicadores clicáveis e filtros; versão "Minhas Ordens de Serviço" para o técnico; página `/ordens-servico/:id` com técnico responsável (atribuir/trocar para ADMIN e ATENDENTE, alerta de técnico inativo), cliente, solicitação de origem (só ADMIN/ATENDENTE), equipamento, acessórios, resumo do atendimento e histórico. Testes: `backend/test/ordensServico.test.js`, `frontend/src/pages/dashboard/dashboard.spec.ts`, `frontend/src/pages/ordens-servico/ordem-servico-detalhe.spec.ts`.
-> **Decisões aplicadas sem mudar regras existentes:** D-OS-1 = 404; D-OS-2 = não remover técnico; D-OS-4 = histórico derivado (sem tabela nova); D-OS-9 = técnico vê só o nome do cliente. **Mantidas como estavam (continuam pendentes):** D-OS-3 (EM_ANALISE), D-OS-5 (garantia só ADMIN/ATENDENTE), D-OS-6, D-OS-7, D-OS-8 (técnico vê pagamentos das próprias OS).
+> **Decisões aplicadas sem mudar regras existentes:** D-OS-1 = 404; D-OS-2 = não remover técnico; D-OS-4 = histórico derivado (sem tabela nova); D-OS-9 = técnico vê só o nome do cliente. **Mantidas como estavam (continuam pendentes):** D-OS-3 (EM_ANALISE), D-OS-5 (garantia só ADMIN/ATENDENTE — resolvida em 11/11/2026: técnico atribuído), D-OS-6 (resolvida em 11/11/2026: garantia SIM passa por orçamento), D-OS-7, D-OS-8 (técnico vê pagamentos das próprias OS).
 > **D-OS-11 resolvido (07/11/2026, com autorização do usuário):** OS nº 1 reatribuída de Tiago Técnico (ID 2, inativo) para Tecnico Teste (ID 7) pela própria API (`PATCH /api/ordens-servico/1/tecnico`).
 
 Legenda: **IMPLEMENTADO** · **PARCIALMENTE IMPLEMENTADO** · **NÃO IMPLEMENTADO** · **PRECISA DE REVISÃO** · **DECISÃO PENDENTE**. Itens **(proposta)** não existem no projeto.
@@ -48,7 +57,7 @@ Legenda: **IMPLEMENTADO** · **PARCIALMENTE IMPLEMENTADO** · **NÃO IMPLEMENTAD
 | Trocar técnico responsável | **PARCIALMENTE IMPLEMENTADO** | O mesmo PATCH sobrescreve; não permite remover o técnico (voltar a NULL) |
 | Técnico consulta só as suas OS | **NÃO IMPLEMENTADO** | Confirmado em chamada real (seção 3) |
 | Status atual | **IMPLEMENTADO** | Coluna `status` (ENUM com 8 valores) |
-| Garantia do equipamento | **IMPLEMENTADO** — perfis **PRECISA DE REVISÃO** | `PATCH /:id/garantia` só para ADMIN/ATENDENTE (D-OS-5) |
+| Garantia do equipamento | **IMPLEMENTADO** | `PATCH /:id/garantia` só para o técnico atribuído (D-OS-5 resolvida em 11/11/2026; ver regras atuais no início) |
 | Orçamento, execução, pagamento e expedição por OS | **IMPLEMENTADO** no backend | Rotas `/:id_os/...` (ver seção 7) |
 | Interface Angular de OS | **NÃO IMPLEMENTADO** | O dashboard tem a tabela "Ordens de Serviço" vazia, sem chamada à API |
 | Testes de OS | **PARCIALMENTE IMPLEMENTADO** | Os testes cobrem execução, orçamento, pagamento e expedição; não há testes de listagem, detalhes, atribuição nem autorização por rota |
@@ -124,7 +133,7 @@ Ambiente do teste: OS nº 1 atribuída ao técnico **ID 2** (Tiago, hoje inativo
 | Nº | Problema | Impacto |
 |---|---|---|
 | S1 | Nenhuma ação leva `RECEBIDA → EM_ANALISE` | O dashboard sempre mostraria 0 OS "Em análise", salvo orçamentos vencidos; o status não informa que o técnico começou |
-| S2 | Equipamento em garantia (`SIM`) também passa por orçamento e aprovação, com serviço a custo zero | Pode ser intencional (peças continuam cobradas); precisa de confirmação (D-OS-6) |
+| S2 | Equipamento em garantia (`SIM`) também passa por orçamento e aprovação, com serviço a custo zero | **Confirmado em 11/11/2026 (D-OS-6):** é a regra — serviços cobertos a R$ 0,00, peças cobradas normalmente, orçamento e aprovação obrigatórios |
 | S3 | Não há como encerrar uma OS sem orçamento (cliente desiste antes, equipamento sem conserto) | A OS fica ativa indefinidamente (D-OS-7) |
 | S4 | Execução pode ser registrada em qualquer status não final, inclusive `RECEBIDA` e `AGUARDANDO_APROVACAO` | Não é erro, mas não altera o status (ligado a S1) |
 | S5 | `FALHA_ENTREGA` na expedição não muda o status da OS | Comportamento a confirmar |
@@ -160,7 +169,7 @@ RECEBIDA / EM_ANALISE ──(encerrar sem reparo, com motivo)──▶ ENCERRADA
 | Criar OS manual | sim | sim | não | não |
 | Atribuir/trocar técnico | sim | sim | não | não |
 | Remover técnico (voltar a NULL) | não existe | não existe | não | **D-OS-2** |
-| Definir garantia | sim | sim | não | **D-OS-5** (recomendado: sim, nas atribuídas) |
+| Definir garantia | não (consulta) | não (consulta) | sim, só nas atribuídas | sim, só nas atribuídas — **D-OS-5 resolvida em 11/11/2026** (ADMIN e ATENDENTE apenas consultam) |
 | Ver acessórios recebidos | sim | sim | **qualquer** (A1c) | só nas atribuídas |
 | Registrar acessórios | sim | sim | **qualquer** (A4) | conforme D-SOL-8 |
 | Ver/registrar execução | ver: todos; registrar: ADMIN e técnico atribuído | ver: sim; registrar: não | ver: **qualquer**; registrar: só atribuída | ver e registrar: só atribuída |
@@ -217,7 +226,7 @@ RECEBIDA / EM_ANALISE ──(encerrar sem reparo, com motivo)──▶ ENCERRADA
 | GET | `/api/ordens-servico` | ADMIN, ATENDENTE, TÉCNICO | **não** (A1a) |
 | GET | `/api/ordens-servico/:id` | 3 perfis | **não** (A1b) |
 | PATCH | `/api/ordens-servico/:id/tecnico` | ADMIN, ATENDENTE | não precisa |
-| PATCH | `/api/ordens-servico/:id/garantia` | ADMIN, ATENDENTE | não precisa |
+| PATCH | `/api/ordens-servico/:id/garantia` | TÉCNICO atribuído (atualizado em 11/11/2026) | sim (o service confere o técnico atribuído) |
 | GET | `/api/ordens-servico/:id/acessorios` | 3 perfis | **não** (A1c) |
 | POST | `/api/ordens-servico/:id/acessorios` | 3 perfis | **não** (A4) |
 | GET | `/api/ordens-servico/:id_os/execucao` | 3 perfis | **não** |
@@ -386,7 +395,7 @@ Layout em seções (cartões na paleta aprovada):
 |---|---|---|
 | Solicitações | A OS nasce na abertura (mesma transação) | Mudanças no contrato da solicitação precisam devolver `id_os` |
 | Clientes | Cliente chega à OS via `item_solicitacao → solicitacao → cliente` | JOIN de 3 níveis; dados do cliente para o técnico (D-OS-9) |
-| Equipamentos | `ordem_servico.id_item` | Garantia é do equipamento, não da OS: um equipamento com várias OS compartilha a garantia |
+| Equipamentos | `ordem_servico.id_item` | Garantia registrada por OS (atualizado em 11/11/2026): cada OS do equipamento tem sua própria verificação; uma nova OS herda a garantia registrada anteriormente para o equipamento, quando existir |
 | Acessórios recebidos | Por `id_item`, não por OS | Todas as OS do mesmo equipamento mostram os mesmos acessórios |
 | Orçamentos | `orcamento.id_os`; resposta muda o status da OS | Vencimento é verificado "sob demanda" (ao ler/criar/responder), não por agendamento |
 | Execução | `execucao.id_os` UNIQUE (uma por OS) | Concluir exige `data_conclusao`; o técnico precisa estar ativo (A7) |
@@ -435,8 +444,8 @@ Nenhuma rota de leitura expõe OS de outro técnico (testado por rota); listagem
 | D-OS-2 | Permitir remover o técnico (voltar a "sem técnico") | (a) não; (b) sim, só antes de existir execução | (a) por ora; trocar já resolve a maioria dos casos |
 | D-OS-3 | Uso de EM_ANALISE | (a) ao registrar a execução; (b) ao atribuir o técnico; (c) botão "Iniciar análise" | (a) — sem endpoint novo e fiel ao fluxo documentado |
 | D-OS-4 | Histórico da OS | (a) linha do tempo derivada (sem mudar o banco); (b) nova tabela de histórico (muda o MER) | (a) agora; (b) só se a faculdade exigir trilha completa |
-| D-OS-5 | Quem define a garantia | (a) ADMIN/ATENDENTE (atual); (b) incluir o TÉCNICO atribuído | (b) — as Especificações dizem que o técnico "verifica a garantia" |
-| D-OS-6 | Garantia SIM exige orçamento e aprovação? | (a) manter (peças cobradas); (b) criar caminho direto para EM_REPARO | Confirmar a regra com a faculdade |
+| D-OS-5 | Quem define a garantia | (a) ADMIN/ATENDENTE (atual); (b) incluir o TÉCNICO atribuído | (b) — as Especificações dizem que o técnico "verifica a garantia". **Resolvida em 11/11/2026:** somente o técnico atribuído altera; ADMIN e ATENDENTE apenas consultam |
+| D-OS-6 | Garantia SIM exige orçamento e aprovação? | (a) manter (peças cobradas); (b) criar caminho direto para EM_REPARO | Confirmar a regra com a faculdade. **Resolvida em 11/11/2026:** (a) — orçamento e aprovação obrigatórios; serviços cobertos a R$ 0,00 e peças cobradas normalmente |
 | D-OS-7 | Encerrar OS sem orçamento | (a) não permitir; (b) ação "Encerrar sem reparo" com motivo (ADMIN/ATENDENTE) | (b) — cobre desistência e equipamento sem conserto; MER já prevê `motivo_encerramento` |
 | D-OS-8 | Técnico vê pagamentos/expedição? | (a) não; (b) só leitura nas atribuídas | Pagamentos: (a). Expedição: (b) |
 | D-OS-9 | Dados do cliente para o técnico | (a) só nome; (b) nome e contato | (a) — minimiza exposição; o contato com o cliente é do atendimento |

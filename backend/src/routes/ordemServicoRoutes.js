@@ -35,12 +35,12 @@ router.patch(
     ordemServicoController.atribuirTecnico
 );
 
-// Garantia: verificação pelo ATENDENTE (substitui a regra anterior do técnico atribuído).
-// TECNICO e ADMINISTRADOR apenas consultam a garantia nos detalhes da OS.
+// Garantia (RN05): somente o técnico atribuído verifica e corrige; OS de outro técnico → 404.
+// ADMINISTRADOR e ATENDENTE apenas consultam a garantia nos detalhes da OS.
 router.patch(
     "/:id/garantia",
     autenticar,
-    autorizarPerfil("ATENDENTE"),
+    autorizarPerfil("TECNICO"),
     autorizarAcessoOs("id"),
     ordemServicoController.atualizarGarantia
 );

@@ -29,14 +29,17 @@ function erroComStatus(mensagem, statusCode) {
     return erro;
 }
 
-async function encerrarSemReparo({ id_os, tipo_encerramento, motivo, id_usuario }) {
+// exigirTecnicoAtribuido (A4): quando quem encerra é um TECNICO, o técnico da OS é
+// conferido de novo com a linha bloqueada (a OS pode ter sido reatribuída depois da
+// validação do service/middleware).
+async function encerrarSemReparo({ id_os, tipo_encerramento, motivo, id_usuario, exigirTecnicoAtribuido = false }) {
     const conexao = await pool.getConnection();
 
     try {
         await conexao.beginTransaction();
 
         const [ordens] = await conexao.execute(
-            `SELECT id_os, status
+            `SELECT id_os, status, id_tecnico
              FROM ordem_servico
              WHERE id_os = ?
              FOR UPDATE`,
@@ -45,6 +48,10 @@ async function encerrarSemReparo({ id_os, tipo_encerramento, motivo, id_usuario 
 
         if (ordens.length === 0) {
             throw erroComStatus("Ordem de serviço não encontrada.", 404);
+        }
+
+        if (exigirTecnicoAtribuido && Number(ordens[0].id_tecnico) !== Number(id_usuario)) {
+            throw erroComStatus("Somente o técnico atribuído pode encerrar esta ordem de serviço.", 403);
         }
 
         const statusAnterior = ordens[0].status;
